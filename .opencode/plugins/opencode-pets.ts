@@ -108,7 +108,7 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
       const timeout = setTimeout(() => controller.abort(), 5000)
 
       const response = await fetch(url, {
-        method: "POST",
+        method: "GET",
         signal: controller.signal,
       })
       clearTimeout(timeout)
