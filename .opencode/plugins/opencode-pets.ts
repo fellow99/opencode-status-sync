@@ -76,6 +76,10 @@ async function readConfig(
 // ---------------------------------------------------------------------------
 
 export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
+  console.log("[🐱 pets] ──────────────────────────────────")
+  console.log(`[🐱 pets] 🚀 Plugin loading...`)
+  console.log(`[🐱 pets] 📂 Project dir: ${directory}`)
+
   // ── Logging helper ──────────────────────────────────────────────────
   async function log(
     level: LogLevel,
@@ -86,15 +90,26 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   }
 
   // ── Read configuration ──────────────────────────────────────────────
+  const configPath = `${directory}/opencode-pets.json`
+  console.log(`[🐱 pets] 📋 Reading config: ${configPath}`)
+
   const config = await readConfig(directory, log)
 
   if (!config) {
-    console.log("[🐱 pets] ⚠️  No valid baseURL in opencode-pets.json. Plugin disabled.")
+    console.log(`[🐱 pets] ⚠️  opencode-pets.json not found or baseURL missing`)
+    console.log(`[🐱 pets] ⚠️  Plugin disabled — add {"baseURL":"http://..."} to ${configPath}`)
+    console.log("[🐱 pets] ──────────────────────────────────")
     await log("warn", "No valid baseURL in opencode-pets.json. Plugin disabled.")
     return {}
   }
 
-  console.log(`[🐱 pets] ✅ Initialized — baseURL: ${config.baseURL}`)
+  console.log(`[🐱 pets] ✅ Config loaded: baseURL = ${config.baseURL}`)
+  console.log(`[🐱 pets] 🌐 Pet service endpoints:`)
+  const allStates: PetState[] = ["thinking", "idle", "sleeping", "reading", "writing", "runing", "working"]
+  for (const s of allStates) {
+    console.log(`[🐱 pets]    ${config.baseURL}/${s}`)
+  }
+
   await log("info", "opencode-pets initialized", { baseURL: config.baseURL })
 
   // ── State tracking (deduplication) ──────────────────────────────────
@@ -189,4 +204,9 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
       }
     },
   }
+
+  // ── Hooks registered ────────────────────────────────────────────────
+  console.log("[🐱 pets] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
+  console.log("[🐱 pets] ✅ Plugin ready — watching for OpenCode events...")
+  console.log("[🐱 pets] ──────────────────────────────────")
 }
