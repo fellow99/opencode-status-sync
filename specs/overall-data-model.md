@@ -8,7 +8,7 @@ The opencode-pets plugin has a minimal data model. It does not persist any data 
 
 ### PetsConfig
 
-The plugin's configuration, read from `opencode.json`.
+The plugin's configuration, read from `opencode-pets.json`.
 
 ```typescript
 interface PetsConfig {
@@ -22,7 +22,7 @@ interface PetsConfig {
 - `baseURL` SHOULD be a valid URL (protocol + host)
 - If `baseURL` is missing or empty, the plugin operates in disabled mode
 
-**Source**: `opencode.json` → `pets` key
+**Source**: `opencode-pets.json`
 
 ### Config Example
 
@@ -38,7 +38,7 @@ interface PetsConfig {
 
 | Field | Default | Behavior When Missing |
 |-------|---------|----------------------|
-| `pets.baseURL` | `undefined` | Plugin logs warning, all API calls are skipped |
+| `baseURL` | `undefined` | Plugin logs warning, all API calls are skipped |
 
 ## Runtime State Model
 

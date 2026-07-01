@@ -48,7 +48,7 @@ opencode-pets/
 |------|---------|
 | `package.json` | Project metadata, dev dependencies (`@opencode-ai/plugin`, `typescript`) |
 | `tsconfig.json` | TypeScript configuration for IDE support |
-| `opencode.json` | Example OpenCode config with `pets.baseURL` |
+| `opencode.json` | Example OpenCode config with `baseURL in opencode-pets.json` |
 | `.gitignore` | Ignore patterns (node_modules, logs, etc.) |
 | `README.md` | Project introduction and usage guide |
 

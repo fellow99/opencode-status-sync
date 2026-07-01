@@ -31,7 +31,7 @@ The plugin uses OpenCode's `event` hook to subscribe to all events, combined wit
 
 | Step | Description | Output |
 |------|-------------|--------|
-| 2.1 | Implement config reading from `opencode.json` | `readConfig()` function |
+| 2.1 | Implement config reading from `opencode-pets.json` | `readConfig()` function |
 | 2.2 | Implement HTTP request helper | `notifyPet()` function with error handling |
 | 2.3 | Implement state deduplication | `currentState` tracking variable |
 | 2.4 | Implement event → state mapping | Mapping logic |

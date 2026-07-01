@@ -27,9 +27,9 @@
 
 | Aspect | Choice | Rationale |
 |--------|--------|-----------|
-| Config Source | `opencode.json` under `pets` key | Native OpenCode config file. No separate config file needed. |
+|  `opencode-pets.json` | `opencode-pets.json` | Native OpenCode config file. No separate config file needed. |
 | Config Format | JSON | Standard for OpenCode ecosystem. |
-| Required Fields | `pets.baseURL` | URL of the pet service API. |
+| Required Fields | `baseURL` | URL of the pet service API. |
 | Default | `http://localhost:3000` | Sensible local default. |
 
 ## Project Structure

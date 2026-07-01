@@ -14,7 +14,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 
 | Actor | Role |
 |-------|------|
-| **OpenCode User** | Configures the plugin by setting `pets.baseURL` in `opencode.json`. Observes the pet's visual state. |
+| **OpenCode User** | Configures the plugin by creating `opencode-pets.json` with a `baseURL`. Observes the pet's visual state. |
 | **OpenCode AI Agent** | Performs actions (thinking, reading, writing, executing) that trigger plugin hooks. |
 | **Pet Service** | External HTTP service that receives status calls and renders the pet visualization. Runs at the configured `baseURL`. |
 
@@ -23,7 +23,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 ### Scenario 1: Plugin Installation and Configuration
 
 **Given** the user has OpenCode installed
-**When** they add the plugin file to `.opencode/plugins/` and configure `pets.baseURL` in `opencode.json`
+**When** they add the plugin file to `.opencode/plugins/` and create `opencode-pets.json` with `baseURL`
 **Then** the plugin loads at OpenCode startup and logs the configured baseURL
 
 ### Scenario 2: AI Thinking State
@@ -70,7 +70,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 
 ### Scenario 9: Missing Configuration
 
-**Given** the plugin is loaded but `pets.baseURL` is not configured
+**Given** the plugin is loaded but `opencode-pets.json` does not exist or `baseURL` is not configured
 **When** any event would trigger a status update
 **Then** the plugin logs a warning and does NOT attempt API calls
 
@@ -85,7 +85,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-01 | Plugin SHALL load from `.opencode/plugins/` directory at OpenCode startup | P0 |
-| FR-02 | Plugin SHALL read `pets.baseURL` configuration from `opencode.json` | P0 |
+| FR-02 | Plugin SHALL read `baseURL` configuration from `opencode-pets.json` | P0 |
 | FR-03 | Plugin SHALL log initialization status via `client.app.log()` | P1 |
 | FR-04 | Plugin SHALL subscribe to OpenCode session events (`session.created`, `session.idle`, `session.error`) | P0 |
 | FR-05 | Plugin SHALL subscribe to OpenCode tool execution events (`tool.execute.before`) | P0 |
@@ -98,7 +98,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 | FR-12 | Plugin SHALL map `tool.execute.before` (other tools) to `POST {baseURL}/working` | P1 |
 | FR-13 | Plugin SHALL deduplicate consecutive identical state changes (no repeat calls) | P1 |
 | FR-14 | Plugin SHALL handle API call failures gracefully (log, never throw) | P0 |
-| FR-15 | Plugin SHALL function when `pets.baseURL` is missing (log warning, disable calls) | P1 |
+| FR-15 | Plugin SHALL function when `baseURL` is missing from `opencode-pets.json` (log warning, disable calls) | P1 |
 | FR-16 | Plugin SHALL NOT block or delay any OpenCode operation | P0 |
 | FR-17 | Plugin SHALL use native `fetch` (Bun built-in) for HTTP requests | P1 |
 

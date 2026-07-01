@@ -17,7 +17,7 @@
 ## Category 1: Configuration Tests
 
 ### TC-CFG-01: Valid Configuration
-- **Description**: Plugin loads successfully with valid `pets.baseURL` in `opencode.json`
+- **Description**: Plugin loads successfully with valid `baseURL in opencode-pets.json` in `opencode.json`
 - **Precondition**: `opencode.json` contains `{ "pets": { "baseURL": "http://192.168.137.197" } }`
 - **Steps**:
   1. Place plugin in `.opencode/plugins/`

@@ -25,7 +25,7 @@ The plugin MUST operate as a side-effect observer. It SHALL NOT:
 
 ### 4. Configurable
 - The baseURL of the pet service SHALL be user-configurable
-- Configuration SHALL be read from `opencode.json` under a `pets` key
+- Configuration SHALL be read from `opencode-pets.json`
 - Sensible defaults SHALL be provided where applicable
 
 ### 5. Observable
