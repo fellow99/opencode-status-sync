@@ -89,10 +89,12 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   const config = await readConfig(directory, log)
 
   if (!config) {
+    console.log("[🐱 pets] ⚠️  No valid baseURL in opencode-pets.json. Plugin disabled.")
     await log("warn", "No valid baseURL in opencode-pets.json. Plugin disabled.")
     return {}
   }
 
+  console.log(`[🐱 pets] ✅ Initialized — baseURL: ${config.baseURL}`)
   await log("info", "opencode-pets initialized", { baseURL: config.baseURL })
 
   // ── State tracking (deduplication) ──────────────────────────────────
@@ -114,14 +116,17 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
       clearTimeout(timeout)
 
       if (response.ok) {
+        console.log(`[🐱 pets] 📡 GET ${url} → ${response.status} OK`)
         await log("debug", `Notified pet service: ${state}`, { url, status: response.status })
       } else {
+        console.log(`[🐱 pets] ⚠️  GET ${url} → ${response.status}`)
         await log("warn", `Pet service returned non-OK status: ${state}`, {
           url,
           status: response.status,
         })
       }
     } catch (err) {
+      console.log(`[🐱 pets] ❌ GET ${url} → ${String(err)}`)
       await log("error", `Failed to notify pet service: ${state}`, {
         url,
         error: String(err),
@@ -130,10 +135,15 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   }
 
   async function transitionTo(newState: PetState): Promise<void> {
-    if (newState === currentState) return // dedup consecutive identical states
+    if (newState === currentState) {
+      console.log(`[🐱 pets] ⏭️  ${newState} (dup, skipped)`)
+      return // dedup consecutive identical states
+    }
 
     const prevState = currentState
     currentState = newState
+
+    console.log(`[🐱 pets] 🔄 ${prevState || "none"} → ${newState}`)
 
     await log("debug", `State: ${prevState || "none"} → ${newState}`, {
       from: prevState || null,
@@ -152,6 +162,7 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
     event: async ({ event }) => {
       const state = SESSION_STATE_MAP[event.type]
       if (state) {
+        console.log(`[🐱 pets] 📨 event: ${event.type}`)
         await transitionTo(state)
       }
     },
@@ -161,6 +172,7 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
      */
     "tool.execute.before": async (input) => {
       const state: PetState = TOOL_STATE_MAP[input.tool] ?? "working"
+      console.log(`[🐱 pets] 🔧 tool: ${input.tool}`)
       await transitionTo(state)
     },
 
@@ -170,7 +182,10 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
      */
     "tool.execute.after": async () => {
       if (currentState !== "sleeping") {
+        console.log(`[🐱 pets] ✅ tool done → thinking`)
         await transitionTo("thinking")
+      } else {
+        console.log(`[🐱 pets] ⏸️  tool done but sleeping (guarded)`)
       }
     },
   }
