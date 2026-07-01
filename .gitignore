@@ -1,5 +1,5 @@
 node_modules/
 dist/
-logs/*
+logs/**
 !logs/**/*.md
 .DS_Store

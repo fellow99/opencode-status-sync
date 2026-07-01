@@ -12,6 +12,9 @@ interface PetsConfig {
 /** Valid pet states that map to API endpoints */
 type PetState = "thinking" | "idle" | "sleeping" | "reading" | "writing" | "runing" | "working"
 
+/** Log levels used by the plugin */
+type LogLevel = "debug" | "info" | "warn" | "error"
+
 // ---------------------------------------------------------------------------
 // Event → State Mappings
 // ---------------------------------------------------------------------------
@@ -41,21 +44,29 @@ const SESSION_STATE_MAP: Record<string, PetState> = {
  * Read pets configuration from opencode.json in the project directory.
  * Returns null if no valid config is found — the plugin operates in disabled mode.
  */
-async function readConfig(directory: string): Promise<PetsConfig | null> {
+async function readConfig(
+  directory: string,
+  log: (level: LogLevel, message: string, extra?: Record<string, unknown>) => Promise<void>,
+): Promise<PetsConfig | null> {
   const configPath = `${directory}/opencode.json`
   try {
     const file = Bun.file(configPath)
-    if (!(await file.exists())) return null
+    if (!(await file.exists())) {
+      await log("debug", "opencode.json not found")
+      return null
+    }
 
     const content = await file.json()
     const baseURL: unknown = content?.pets?.baseURL
 
     if (!baseURL || typeof baseURL !== "string" || baseURL.trim().length === 0) {
+      await log("debug", "pets.baseURL missing or empty in opencode.json")
       return null
     }
 
     return { baseURL: baseURL.trim() }
-  } catch {
+  } catch (err) {
+    await log("warn", `Failed to parse ${configPath}: ${String(err)}`)
     return null
   }
 }
@@ -65,30 +76,24 @@ async function readConfig(directory: string): Promise<PetsConfig | null> {
 // ---------------------------------------------------------------------------
 
 export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
+  // ── Logging helper ──────────────────────────────────────────────────
+  async function log(
+    level: LogLevel,
+    message: string,
+    extra?: Record<string, unknown>,
+  ): Promise<void> {
+    await client.app.log({ body: { service: "opencode-pets", level, message, extra } } as any)
+  }
+
   // ── Read configuration ──────────────────────────────────────────────
-  const config = await readConfig(directory)
+  const config = await readConfig(directory, log)
 
   if (!config) {
-    await client.app.log({
-      body: {
-        service: "opencode-pets",
-        level: "warn",
-        message:
-          "opencode-pets: No valid pets.baseURL configured in opencode.json. Plugin disabled.",
-      },
-    } as any)
-    // Return empty hooks object — plugin is effectively disabled
+    await log("warn", "No valid pets.baseURL configured. Plugin disabled.")
     return {}
   }
 
-  await client.app.log({
-    body: {
-      service: "opencode-pets",
-      level: "info",
-      message: "opencode-pets initialized",
-      extra: { baseURL: config.baseURL },
-    },
-  } as any)
+  await log("info", "opencode-pets initialized", { baseURL: config.baseURL })
 
   // ── State tracking (deduplication) ──────────────────────────────────
   const baseURL = config.baseURL
@@ -108,23 +113,19 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
       })
       clearTimeout(timeout)
 
-      await client.app.log({
-        body: {
-          service: "opencode-pets",
-          level: "debug",
-          message: `Notified pet service: ${state}`,
-          extra: { url, status: response.status },
-        },
-      } as any)
+      if (response.ok) {
+        await log("debug", `Notified pet service: ${state}`, { url, status: response.status })
+      } else {
+        await log("warn", `Pet service returned non-OK status: ${state}`, {
+          url,
+          status: response.status,
+        })
+      }
     } catch (err) {
-      await client.app.log({
-        body: {
-          service: "opencode-pets",
-          level: "error",
-          message: `Failed to notify pet service: ${state}`,
-          extra: { url, error: String(err) },
-        },
-      } as any)
+      await log("error", `Failed to notify pet service: ${state}`, {
+        url,
+        error: String(err),
+      })
     }
   }
 
@@ -134,14 +135,10 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
     const prevState = currentState
     currentState = newState
 
-    await client.app.log({
-      body: {
-        service: "opencode-pets",
-        level: "debug",
-        message: `State: ${prevState || "none"} → ${newState}`,
-        extra: { from: prevState || null, to: newState },
-      },
-    } as any)
+    await log("debug", `State: ${prevState || "none"} → ${newState}`, {
+      from: prevState || null,
+      to: newState,
+    })
 
     await notify(newState)
   }
@@ -168,10 +165,13 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
     },
 
     /**
-     * After a tool completes: back to thinking (AI is generating next response).
+     * After a tool completes: back to thinking, unless in terminal error state.
+     * Guard against overriding "sleeping" set by session.error.
      */
     "tool.execute.after": async () => {
-      await transitionTo("thinking")
+      if (currentState !== "sleeping") {
+        await transitionTo("thinking")
+      }
     },
   }
 }
