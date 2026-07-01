@@ -61,7 +61,7 @@ opencode-pets/
 | `specs/ARCHITECTURE.md` | ~200 | Component architecture and data flow |
 | `specs/TECH.md` | ~110 | Technology selection with rationale |
 | `specs/overall-data-model.md` | ~190 | Type definitions and state transitions |
-| `specs/overall-test-cases.md` | ~280 | 20 test cases in 6 categories |
+| `specs/overall-test-cases.md` | ~310 | 23 test cases in 6 categories |
 | `specs/README.md` | ~50 | Document index |
 | `specs/SPECS_CHECKLIST.md` | ~60 | Completion tracking |
 | `specs/STRUCTURE.md` | ~60 | This file |
@@ -71,7 +71,7 @@ opencode-pets/
 | Metric | Value |
 |--------|-------|
 | Spec documents | 10 |
-| Total spec lines | ~1,550 |
+| Total spec lines | ~1,700 |
 | Plugin source files (planned) | 1 |
 | Config files (planned) | 4 |
 | Runtime dependencies | 0 |

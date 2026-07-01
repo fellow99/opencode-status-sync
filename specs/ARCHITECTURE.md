@@ -25,15 +25,13 @@
 │  └───────────────────────────────────────────────┘    │
 └───────────────────────┬─────────────────────────────┘
                         │
-                        │ HTTP POST
-                        ▼
+                         │ HTTP GET
+                         ▼
 ┌─────────────────────────────────────────────────────┐
 │                 Pet Service (External)                │
 │                                                       │
-│  GET/POST /thinking   GET/POST /idle                  │
-│  GET/POST /working    GET/POST /reading               │
-│  GET/POST /writing    GET/POST /runing               │
-│  GET/POST /sleeping                                   │
+│  /thinking   /idle   /error   /reading               │
+│  /writing    /working                                 │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -65,34 +63,36 @@
 ```
 session.created     → "thinking"
 session.idle        → "idle"
-session.error       → "sleeping"
+session.error       → "error"
 tool: read/glob/grep → "reading"
 tool: edit/write     → "writing"
-tool: bash           → "runing"
-tool: other          → "working"
+tool: bash/other     → "working"
 ```
 
 ### 3. State Manager
 
-**Purpose**: Track current state and deduplicate consecutive identical states.
+**Purpose**: Track current state, deduplicate consecutive identical states, and debounce rapid transitions.
 
-**State**: `string` (one of: "thinking", "idle", "sleeping", "reading", "writing", "runing", "working", "")
+**State**: `PetState` (one of: "thinking", "idle", "error", "reading", "writing", "working", "")
 
 **Logic**:
 - On new state request:
-  - If same as current state → no-op (dedup)
-  - If different → update current state, trigger HTTP notifier
+  - If same as current state or pending debounce state → no-op (dedup)
+  - If `idle` or `error` → update immediately, cancel any pending debounce, trigger HTTP notifier
+  - Otherwise → set as pending, reset debounce timer (1000ms). When timer fires, update current state and trigger HTTP notifier
+- Debounce prevents rapid visual flicker from consecutive tool calls (e.g., read→bash→read→thinking)
+- `idle`/`error` skip debounce to ensure timely error/idle display
 
 ### 4. HTTP Notifier
 
-**Purpose**: Send HTTP POST request to the pet service.
+**Purpose**: Send HTTP GET request to the pet service.
 
 **Input**: `baseURL: string`, `endpoint: string` (e.g., "/thinking")
 **Output**: void (fire-and-forget)
 
 **Logic**:
 1. Construct URL: `${baseURL}${endpoint}`
-2. Send POST with `fetch()`
+2. Send GET with `fetch()`
 3. Handle response (ignore body, log status)
 4. Handle errors (log, never throw)
 
@@ -107,12 +107,13 @@ tool: other          → "working"
 ```
 1. OpenCode fires event (e.g., "tool.execute.before" with tool="bash")
 2. Plugin's hook receives event
-3. Event Dispatcher maps tool name "bash" → state "runing"
-4. State Manager checks: is "runing" === currentState?
+3. Event Dispatcher maps tool name "bash" → state "working"
+4. State Manager checks: is "working" === currentState or pendingDebounceState?
    - Yes: return (no-op)
-   - No: update currentState, call HTTP Notifier
-5. HTTP Notifier calls POST http://192.168.137.197/runing
-6. Pet Service receives request, updates pet visual
+   - No: set pendingDebounceState = "working", start/reset 1000ms debounce timer
+5. After 1000ms, State Manager updates currentState, calls HTTP Notifier
+6. HTTP Notifier calls GET http://192.168.137.197/working
+7. Pet Service receives request, updates pet visual
 ```
 
 ## Deployment
@@ -165,9 +166,11 @@ opencode-pets/
 
 | Decision | Rationale |
 |----------|-----------|
-| Single file plugin | Minimizes complexity; under 200 lines covers all functionality |
+| Single file plugin | Minimizes complexity; under 300 lines covers all functionality |
 | `event` hook + `tool.execute.before` | Covers all session events AND tool-specific detection |
 | State deduplication in-memory | Avoids redundant API calls for rapid same-type tool executions |
-| Fire-and-forget HTTP | Non-blocking; API failures never affect OpenCode |
+| 1000ms debounce on non-terminal states | Prevents visual flicker from rapid tool-call oscillation (thinking↔reading↔thinking↔writing) |
+| `idle`/`error` fire immediately | Terminal states must be displayed without delay; cancel any pending debounce |
+| Fire-and-forget HTTP (GET) | Non-blocking; API failures never affect OpenCode |
 | No retry logic | Pet service availability is not critical; simplicity over resilience |
 | No persistent state | Plugin is stateless across restarts; reset on each load |

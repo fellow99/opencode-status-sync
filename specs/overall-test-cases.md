@@ -62,7 +62,7 @@
 - **Steps**:
   1. Start a new OpenCode session (send a message)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /thinking` received by pet service
+- **Expected Result**: `GET /thinking` received by pet service
 - **Priority**: P0
 
 ### TC-STATE-02: Session Idle → Idle
@@ -71,16 +71,16 @@
 - **Steps**:
   1. Wait for AI to complete a response
   2. Observe pet service mock logs
-- **Expected Result**: `POST /idle` received by pet service
+- **Expected Result**: `GET /idle` received by pet service
 - **Priority**: P0
 
-### TC-STATE-03: Session Error → Sleeping
-- **Description**: Session error triggers `/sleeping` API call
+### TC-STATE-03: Session Error → Error
+- **Description**: Session error triggers `/error` API call
 - **Precondition**: Plugin loaded with valid config
 - **Steps**:
   1. Trigger a condition that causes a session error (e.g., tool execution failure)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /sleeping` received by pet service
+- **Expected Result**: `GET /error` received by pet service
 - **Priority**: P1
 
 ### TC-STATE-04: Read Tool → Reading
@@ -89,7 +89,7 @@
 - **Steps**:
   1. Ask AI to read a file (triggering `read` tool)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /reading` received by pet service
+- **Expected Result**: `GET /reading` received by pet service
 - **Priority**: P0
 
 ### TC-STATE-05: Write Tool → Writing
@@ -98,30 +98,30 @@
 - **Steps**:
   1. Ask AI to create/edit a file (triggering `write` or `edit` tool)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /writing` received by pet service
+- **Expected Result**: `GET /writing` received by pet service
 - **Priority**: P0
 
-### TC-STATE-06: Bash Tool → Runing
-- **Description**: Bash execution triggers `/runing` API call
+### TC-STATE-06: Bash Tool → Working
+- **Description**: Bash execution triggers `/working` API call
 - **Precondition**: Plugin loaded with valid config
 - **Steps**:
   1. Ask AI to run a command (triggering `bash` tool)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /runing` received by pet service
+- **Expected Result**: `GET /working` received by pet service
 - **Priority**: P0
 
 ### TC-STATE-07: Other Tool → Working
-- **Description**: Non-standard tool triggers `/working` API call
+- **Description**: Non-standard tool (not read/edit/write) triggers `/working` API call
 - **Precondition**: Plugin loaded with valid config
 - **Steps**:
-  1. Trigger a tool that is not read/write/edit/bash (e.g., a custom tool)
+  1. Trigger a tool that is not read/write/edit (e.g., a custom tool)
   2. Observe pet service mock logs
-- **Expected Result**: `POST /working` received by pet service
+- **Expected Result**: `GET /working` received by pet service
 - **Priority**: P1
 
 ---
 
-## Category 3: Deduplication Tests
+## Category 3: Deduplication & Debounce Tests
 
 ### TC-DEDUP-01: Consecutive Same-State Calls Deduplicated
 - **Description**: Plugin does not send duplicate API calls for consecutive same-state events
@@ -129,7 +129,7 @@
 - **Steps**:
   1. Trigger two consecutive `read` tool executions
   2. Observe pet service mock logs
-- **Expected Result**: Only ONE `POST /reading` call sent (not two)
+- **Expected Result**: Only ONE `GET /reading` call sent (not two)
 - **Priority**: P1
 
 ### TC-DEDUP-02: Different States Trigger Separate Calls
@@ -137,9 +137,38 @@
 - **Precondition**: Plugin loaded with valid config, pet service mock running
 - **Steps**:
   1. Trigger a `read` tool → expect `/reading`
-  2. Then trigger a `bash` tool → expect `/runing`
+  2. Then trigger a `bash` tool → expect `/working`
   3. Observe pet service mock logs
-- **Expected Result**: Both `/reading` and `/runing` received (two distinct calls)
+- **Expected Result**: Both `/reading` and `/working` received (two distinct calls)
+- **Priority**: P1
+
+### TC-DEBOUNCE-01: Rapid Tool Calls Debounced
+- **Description**: Rapid state oscillation within 1000ms sends only the final state
+- **Precondition**: Plugin loaded with valid config, pet service mock running
+- **Steps**:
+  1. Trigger rapid sequence: `read` → `edit` → `bash` (within 1000ms)
+  2. Observe pet service mock logs
+- **Expected Result**: Only the final state (`/working`) is sent
+- **Priority**: P1
+
+### TC-DEBOUNCE-02: Idle Fires Immediately
+- **Description**: `idle` state fires immediately, cancels pending debounce
+- **Precondition**: Plugin loaded, AI is working (debounce timer pending)
+- **Steps**:
+  1. Trigger a tool call (debounce timer starts)
+  2. Immediately let session become idle
+  3. Observe pet service mock logs
+- **Expected Result**: `GET /idle` received immediately, pending debounce timer cancelled
+- **Priority**: P1
+
+### TC-DEBOUNCE-03: Error Fires Immediately
+- **Description**: `error` state fires immediately, cancels pending debounce
+- **Precondition**: Plugin loaded, AI is working (debounce timer pending)
+- **Steps**:
+  1. Trigger a tool call (debounce timer starts)
+  2. Immediately trigger a session error
+  3. Observe pet service mock logs
+- **Expected Result**: `GET /error` received immediately, pending debounce timer cancelled
 - **Priority**: P1
 
 ---
@@ -227,8 +256,8 @@
 |----------|-------|----|----|-----|
 | Configuration | 4 | 1 | 2 | 1 |
 | State Transitions | 7 | 4 | 2 | 1 |
-| Deduplication | 2 | 0 | 2 | 0 |
+| Dedup & Debounce | 5 | 0 | 5 | 0 |
 | Error Handling | 3 | 1 | 1 | 1 |
 | Non-Interference | 2 | 1 | 1 | 0 |
 | Plugin Lifecycle | 2 | 1 | 0 | 1 |
-| **Total** | **20** | **8** | **8** | **4** |
+| **Total** | **23** | **8** | **11** | **4** |

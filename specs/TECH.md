@@ -74,5 +74,5 @@ None. The plugin uses only:
 | `axios` / `got` | Adds dependency. Bun `fetch` is sufficient for simple HTTP calls. |
 | JavaScript (no types) | Violates constitution principle of type safety. |
 | Separate config file (`.petsrc`) | Unnecessary. `opencode.json` is the standard config source. |
-| WebSocket connection | Over-engineering. Simple HTTP POST per state change is sufficient. |
+| WebSocket connection | Over-engineering. Simple HTTP GET per state change is sufficient. |
 | State management library | Over-engineering. Simple variable tracking current state is enough. |

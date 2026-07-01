@@ -67,11 +67,10 @@ Enumeration of possible pet visual states.
 type PetState = 
   | "thinking"   // AI is generating a response or session just started
   | "idle"       // AI is waiting for user input
-  | "sleeping"   // Error state / inactive
+  | "error"      // Error state
   | "reading"    // AI is reading files
   | "writing"    // AI is writing/editing files
-  | "runing"     // AI is running commands
-  | "working"    // AI is executing other tools
+  | "working"    // AI is running commands or executing other tools
 ```
 
 ### State Transitions
@@ -82,18 +81,15 @@ type PetState =
          │          └────┬─────┘          │
          │               │                │
     session.created   tool calls     tool complete
-         │               │                │
+         │               │           (debounced)
          │          ┌────▼─────┐          │
          │   ┌─────→│ reading  │─────┐    │
          │   │      └──────────┘     │    │
          │   │      ┌──────────┐     │    │
-         │   ├─────→│ writing  │─────┤    │
-         │   │      └──────────┘     │    │
-         │   │      ┌──────────┐     │    │
-         │   ├─────→│ runing   │─────┤    │
-         │   │      └──────────┘     │    │
-         │   │      ┌──────────┐     │    │
-         │   └─────→│ working  │─────┘    │
+         │   └─────→│ writing  │─────┤    │
+         │          └──────────┘     │    │
+         │          ┌──────────┐     │    │
+         │          │ working  │─────┘    │
          │          └────┬─────┘          │
          │               │                │
          │          ┌────▼─────┐          │
@@ -101,10 +97,13 @@ type PetState =
          │          └──────────┘          │
          │                               │
          │          ┌──────────┐         │
-         └──────────│ sleeping │←────────┘
+         └──────────│  error   │←────────┘
                     └──────────┘
                   session.error
+                  (immediate)
 ```
+
+> Transitions to `thinking`, `reading`, `writing`, `working` are debounced at 1000ms. `idle` and `error` fire immediately and cancel any pending debounce.
 
 ## Event Mapping Model
 
@@ -114,7 +113,7 @@ type PetState =
 |------------------------|----------|
 | `session.created` | `thinking` |
 | `session.idle` | `idle` |
-| `session.error` | `sleeping` |
+| `session.error` | `error` |
 
 ### ToolEvent → PetState
 
@@ -125,8 +124,15 @@ type PetState =
 | `grep` | `reading` |
 | `edit` | `writing` |
 | `write` | `writing` |
-| `bash` | `runing` |
+| `bash` | `working` |
 | *(any other tool)* | `working` |
+
+### Debounce Rules
+
+| PetState | Debounce Policy |
+|----------|----------------|
+| `idle`, `error` | Fire immediately, cancel pending debounce |
+| `thinking`, `reading`, `writing`, `working` | Debounced at 1000ms |
 
 ## API Request Model
 
@@ -151,10 +157,9 @@ interface PetServiceRequest {
 |----------|-------------------|
 | `/thinking` | thinking |
 | `/idle` | idle |
-| `/sleeping` | sleeping |
+| `/error` | error |
 | `/reading` | reading |
 | `/writing` | writing |
-| `/runing` | runing |
 | `/working` | working |
 
 ## Logging Model

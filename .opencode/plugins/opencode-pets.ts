@@ -7,10 +7,11 @@ import type { Plugin } from "@opencode-ai/plugin"
 /** Configuration read from opencode-pets.json */
 interface PetsConfig {
   baseURL: string
+  debug: boolean
 }
 
 /** Valid pet states that map to API endpoints */
-type PetState = "thinking" | "idle" | "sleeping" | "reading" | "writing" | "runing" | "working"
+type PetState = "thinking" | "idle" | "error" | "reading" | "writing" | "working"
 
 /** Log levels used by the plugin */
 type LogLevel = "debug" | "info" | "warn" | "error"
@@ -26,14 +27,13 @@ const TOOL_STATE_MAP: Record<string, PetState> = {
   grep: "reading",
   edit: "writing",
   write: "writing",
-  bash: "runing",
 }
 
 /** Map OpenCode session event types to pet states */
 const SESSION_STATE_MAP: Record<string, PetState> = {
   "session.created": "thinking",
   "session.idle": "idle",
-  "session.error": "sleeping",
+  "session.error": "error",
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +64,8 @@ async function readConfig(
       return null
     }
 
-    return { baseURL: baseURL.trim() }
+    const debug = content?.debug === true
+    return { baseURL: baseURL.trim(), debug }
   } catch (err) {
     await log("warn", `Failed to parse ${configPath}: ${String(err)}`)
     return null
@@ -76,9 +77,15 @@ async function readConfig(
 // ---------------------------------------------------------------------------
 
 export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
-  console.log("[🐱 pets] ──────────────────────────────────")
-  console.log(`[🐱 pets] 🚀 Plugin loading...`)
-  console.log(`[🐱 pets] 📂 Project dir: ${directory}`)
+  // ── Debug logging (captured via let to avoid TDZ with const destructuring) ─
+  let debugEnabled = false
+  function dlog(...args: unknown[]): void {
+    if (debugEnabled) console.info(...args)
+  }
+
+  dlog("[🐱 pets] ──────────────────────────────────")
+  dlog(`[🐱 pets] 🚀 Plugin loading...`)
+  dlog(`[🐱 pets] 📂 Project dir: ${directory}`)
 
   // ── Logging helper ──────────────────────────────────────────────────
   async function log(
@@ -91,30 +98,36 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
 
   // ── Read configuration ──────────────────────────────────────────────
   const configPath = `${directory}/opencode-pets.json`
-  console.log(`[🐱 pets] 📋 Reading config: ${configPath}`)
+  dlog(`[🐱 pets] 📋 Reading config: ${configPath}`)
 
   const config = await readConfig(directory, log)
 
   if (!config) {
-    console.log(`[🐱 pets] ⚠️  opencode-pets.json not found or baseURL missing`)
-    console.log(`[🐱 pets] ⚠️  Plugin disabled — add {"baseURL":"http://..."} to ${configPath}`)
-    console.log("[🐱 pets] ──────────────────────────────────")
+    console.warn(`[🐱 pets] ⚠️  opencode-pets.json not found or baseURL missing`)
+    console.warn(`[🐱 pets] ⚠️  Plugin disabled — add {"baseURL":"http://..."} to ${configPath}`)
+    console.warn("[🐱 pets] ──────────────────────────────────")
     await log("warn", "No valid baseURL in opencode-pets.json. Plugin disabled.")
     return {}
   }
 
-  console.log(`[🐱 pets] ✅ Config loaded: baseURL = ${config.baseURL}`)
-  console.log(`[🐱 pets] 🌐 Pet service endpoints:`)
-  const allStates: PetState[] = ["thinking", "idle", "sleeping", "reading", "writing", "runing", "working"]
+  dlog(`[🐱 pets] ✅ Config loaded: baseURL = ${config.baseURL}`)
+  dlog(`[🐱 pets] 🌐 Pet service endpoints:`)
+  const allStates: PetState[] = ["thinking", "idle", "error", "reading", "writing", "working"]
   for (const s of allStates) {
-    console.log(`[🐱 pets]    ${config.baseURL}/${s}`)
+    dlog(`[🐱 pets]    ${config.baseURL}/${s}`)
   }
 
   await log("info", "opencode-pets initialized", { baseURL: config.baseURL })
 
-  // ── State tracking (deduplication) ──────────────────────────────────
-  const baseURL = config.baseURL
+  // ── State tracking ──────────────────────────────────────────────────
+  const { baseURL } = config
+  debugEnabled = config.debug
+  const DEBOUNCE_MS = 1000
+  const IMMEDIATE_STATES: ReadonlySet<PetState> = new Set(["idle", "error"])
+
   let currentState: PetState | "" = ""
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingDebounceState: PetState | null = null
 
   async function notify(state: PetState): Promise<void> {
     const normalizedBase = baseURL.replace(/\/+$/, "")
@@ -131,17 +144,17 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
       clearTimeout(timeout)
 
       if (response.ok) {
-        console.log(`[🐱 pets] 📡 GET ${url} → ${response.status} OK`)
+        dlog(`[🐱 pets] 📡 GET ${url} → ${response.status} OK`)
         await log("debug", `Notified pet service: ${state}`, { url, status: response.status })
       } else {
-        console.log(`[🐱 pets] ⚠️  GET ${url} → ${response.status}`)
+        dlog(`[🐱 pets] ⚠️  GET ${url} → ${response.status}`)
         await log("warn", `Pet service returned non-OK status: ${state}`, {
           url,
           status: response.status,
         })
       }
     } catch (err) {
-      console.log(`[🐱 pets] ❌ GET ${url} → ${String(err)}`)
+      dlog(`[🐱 pets] ❌ GET ${url} → ${String(err)}`)
       await log("error", `Failed to notify pet service: ${state}`, {
         url,
         error: String(err),
@@ -149,35 +162,65 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
     }
   }
 
+  function flushDebounce(): void {
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+      pendingDebounceState = null
+    }
+  }
+
   async function transitionTo(newState: PetState): Promise<void> {
-    if (newState === currentState) {
-      console.log(`[🐱 pets] ⏭️  ${newState} (dup, skipped)`)
-      return // dedup consecutive identical states
+    if (newState === currentState || newState === pendingDebounceState) {
+      dlog(`[🐱 pets] ⏭️  ${newState} (dup, skipped)`)
+      return
     }
 
-    const prevState = currentState
-    currentState = newState
+    if (IMMEDIATE_STATES.has(newState)) {
+      flushDebounce()
+      const prevState = currentState
+      currentState = newState
+      dlog(`[🐱 pets] 🔄 ${prevState || "none"} → ${newState} (immediate)`)
+      await log("debug", `State: ${prevState || "none"} → ${newState}`, {
+        from: prevState || null,
+        to: newState,
+      })
+      await notify(newState)
+      return
+    }
 
-    console.log(`[🐱 pets] 🔄 ${prevState || "none"} → ${newState}`)
+    pendingDebounceState = newState
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer)
+    }
 
-    await log("debug", `State: ${prevState || "none"} → ${newState}`, {
-      from: prevState || null,
-      to: newState,
-    })
+    debounceTimer = setTimeout(async () => {
+      debounceTimer = null
+      const target = pendingDebounceState
+      pendingDebounceState = null
+      if (target === null || target === currentState) return
 
-    await notify(newState)
+      const prevState = currentState
+      currentState = target
+      dlog(`[🐱 pets] 🔄 ${prevState || "none"} → ${target} (debounced ${DEBOUNCE_MS}ms)`)
+      await log("debug", `State: ${prevState || "none"} → ${target}`, {
+        from: prevState || null,
+        to: target,
+      })
+      await notify(target)
+    }, DEBOUNCE_MS)
   }
 
   // ── Hooks ───────────────────────────────────────────────────────────
 
   return {
     /**
-     * Session-level events: created → thinking, idle → idle, error → sleeping.
+     * Session-level events: created → thinking, idle → idle, error → error.
      */
     event: async ({ event }) => {
       const state = SESSION_STATE_MAP[event.type]
       if (state) {
-        console.log(`[🐱 pets] 📨 event: ${event.type}`)
+        dlog(`[🐱 pets] 📨 event: ${event.type}`)
         await transitionTo(state)
       }
     },
@@ -187,26 +230,25 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
      */
     "tool.execute.before": async (input) => {
       const state: PetState = TOOL_STATE_MAP[input.tool] ?? "working"
-      console.log(`[🐱 pets] 🔧 tool: ${input.tool}`)
+      dlog(`[🐱 pets] 🔧 tool: ${input.tool}`)
       await transitionTo(state)
     },
 
     /**
      * After a tool completes: back to thinking, unless in terminal error state.
-     * Guard against overriding "sleeping" set by session.error.
      */
     "tool.execute.after": async () => {
-      if (currentState !== "sleeping") {
-        console.log(`[🐱 pets] ✅ tool done → thinking`)
+      if (currentState !== "error") {
+        dlog(`[🐱 pets] ✅ tool done → thinking`)
         await transitionTo("thinking")
       } else {
-        console.log(`[🐱 pets] ⏸️  tool done but sleeping (guarded)`)
+        dlog(`[🐱 pets] ⏸️  tool done but error (guarded)`)
       }
     },
   }
 
   // ── Hooks registered ────────────────────────────────────────────────
-  console.log("[🐱 pets] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
-  console.log("[🐱 pets] ✅ Plugin ready — watching for OpenCode events...")
-  console.log("[🐱 pets] ──────────────────────────────────")
+  dlog("[🐱 pets] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
+  dlog("[🐱 pets] ✅ Plugin ready — watching for OpenCode events...")
+  dlog("[🐱 pets] ──────────────────────────────────")
 }

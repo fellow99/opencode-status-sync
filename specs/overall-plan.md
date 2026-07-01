@@ -35,9 +35,10 @@ The plugin uses OpenCode's `event` hook to subscribe to all events, combined wit
 | 2.2 | Implement HTTP request helper | `notifyPet()` function with error handling |
 | 2.3 | Implement state deduplication | `currentState` tracking variable |
 | 2.4 | Implement event → state mapping | Mapping logic |
-| 2.5 | Implement session event handler | `session.created` → `/thinking`, `session.idle` → `/idle`, `session.error` → `/sleeping` |
-| 2.6 | Implement tool event handler | Tool name → `/reading`, `/writing`, `/runing`, `/working` |
+| 2.5 | Implement session event handler | `session.created` → `/thinking`, `session.idle` → `/idle`, `session.error` → `/error` |
+| 2.6 | Implement tool event handler | Tool name → `/reading`, `/writing`, `/working` |
 | 2.7 | Implement plugin initialization and logging | Startup log with config status |
+| 2.8 | Implement debounce logic | 1000ms debounce for thinking/reading/writing/working; idle/error fire immediately |
 
 ### Phase 3: Integration & Polish
 
@@ -73,18 +74,15 @@ Phase 1 (Scaffolding) → Phase 2 (Core Logic) → Phase 3 (Integration)
          │          └────┬─────┘          │
          │               │                │
     session.created   tool calls     tool complete
-         │               │                │
+         │               │           (debounced)
          │          ┌────▼─────┐          │
          │   ┌─────→│ READING  │─────┐    │
          │   │      └──────────┘     │    │
          │   │      ┌──────────┐     │    │
-         │   ├─────→│ WRITING  │─────┤    │
-         │   │      └──────────┘     │    │
-         │   │      ┌──────────┐     │    │
-         │   ├─────→│ RUNING   │─────┤    │
-         │   │      └──────────┘     │    │
-         │   │      ┌──────────┐     │    │
-         │   └─────→│ WORKING  │─────┘    │
+         │   └─────→│ WRITING  │─────┤    │
+         │          └──────────┘     │    │
+         │          ┌──────────┐     │    │
+         │          │ WORKING  │─────┘    │
          │          └────┬─────┘          │
          │               │                │
          │          ┌────▼─────┐          │
@@ -92,9 +90,10 @@ Phase 1 (Scaffolding) → Phase 2 (Core Logic) → Phase 3 (Integration)
          │          └──────────┘          │
          │                               │
          │          ┌──────────┐         │
-         └──────────│ SLEEPING │←────────┘
+         └──────────│  ERROR   │←────────┘
                     └──────────┘
                   session.error
+                  (immediate)
 ```
 
 ### Config Schema
@@ -115,8 +114,12 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   // 2. Initialize logging
   await client.app.log({ body: { service: "opencode-pets", level: "info", message: `Initialized with baseURL: ${config.baseURL}` } })
   
-  // 3. Track current state for dedup
+  // 3. Track current state for dedup + debounce
   let currentState = ""
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingDebounceState: string | null = null
+  const DEBOUNCE_MS = 1000
+  const IMMEDIATE_STATES = new Set(["idle", "error"])
   
   return {
     // Session events via event hook
@@ -132,9 +135,21 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   }
   
   async function transitionTo(newState: string) {
-    if (newState === currentState) return  // dedup
-    currentState = newState
-    await notifyPet(config.baseURL, newState)
+    if (newState === currentState || newState === pendingDebounceState) return
+    if (IMMEDIATE_STATES.has(newState)) {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      currentState = newState
+      await notifyPet(config.baseURL, newState)
+      return
+    }
+    pendingDebounceState = newState
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(async () => {
+      const target = pendingDebounceState!
+      pendingDebounceState = null
+      currentState = target
+      await notifyPet(config.baseURL, target)
+    }, DEBOUNCE_MS)
   }
 }
 ```
@@ -145,11 +160,15 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
 - Config parsing with valid and invalid inputs
 - Event-to-state mapping logic
 - State deduplication logic
+- Debounce logic (rapid state changes within 1000ms window)
+- Immediate fire for idle/error states
 
 ### Integration Testing (ACP-based)
 - Start OpenCode in ACP mode
 - Trigger various operations
 - Verify HTTP requests reach pet service
+- Verify debounce prevents rapid oscillation
+- Verify idle/error fire immediately
 - Verify error handling when pet service is down
 
 ### Test Environment
@@ -163,4 +182,4 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
 | Plugin API changes in OpenCode | Pin to documented event names; version-gate if needed |
 | Bun fetch behavior differences | Use standards-compliant fetch API only |
 | Config file not readable | Graceful fallback with warning log |
-| High-frequency duplicate events | State deduplication (already designed) |
+| High-frequency duplicate events | State deduplication + 1000ms debounce (already designed) |
