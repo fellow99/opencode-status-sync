@@ -32,12 +32,10 @@ The plugin hooks into OpenCode's event system and sends HTTP POST requests to a 
    ~/.config/opencode/plugins/opencode-pets.ts
    ```
 
-2. Configure the pet service URL in your `opencode.json`:
+2. Create an `opencode-pets.json` config file in your project's root directory:
    ```json
    {
-     "pets": {
-       "baseURL": "http://192.168.137.197"
-     }
+     "baseURL": "http://192.168.137.197"
    }
    ```
 
@@ -45,11 +43,13 @@ The plugin hooks into OpenCode's event system and sends HTTP POST requests to a 
 
 ## Configuration
 
+The plugin reads its configuration from `opencode-pets.json` in the project root.
+
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `pets.baseURL` | Yes | — | Base URL of the pet service API |
+| `baseURL` | Yes | — | Base URL of the pet service API |
 
-If `pets.baseURL` is missing or invalid, the plugin logs a warning and disables itself. OpenCode continues to work normally.
+If `opencode-pets.json` is missing or `baseURL` is invalid, the plugin logs a warning and disables itself. OpenCode continues to work normally.
 
 ## Pet Service API
 

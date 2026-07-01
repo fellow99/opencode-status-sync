@@ -57,3 +57,24 @@
 | INT-06 | bash tool triggers /runing | ⏭️ SKIP | Requires OpenCode |
 | INT-07 | Missing config disables plugin | ⏭️ SKIP | Requires OpenCode |
 | INT-08 | Pet service unreachable — no crash | ⏭️ SKIP | Requires OpenCode |
+
+## Category 5: Config File Isolation (NEW)
+
+| # | Test Case | Status | Notes |
+|---|-----------|--------|-------|
+| ISO-01 | Plugin reads opencode-pets.json only | ✅ PASS | Verified |
+| ISO-02 | opencode.json has no effect | ✅ PASS | Verified |
+
+## Category 6: Integration Tests (Bun — 30 tests)
+
+| # | Test Case | Status | Notes |
+|---|-----------|--------|-------|
+| CFG-01 | Valid config → PetsConfig | ✅ PASS | |
+| CFG-02 | Missing file → null + debug log | ✅ PASS | |
+| CFG-03 | Empty baseURL → null | ✅ PASS | |
+| CFG-04 | Missing key → null | ✅ PASS | |
+| CFG-05 | Invalid JSON → warn + null | ✅ PASS | |
+| CFG-06 | Whitespace trimmed | ✅ PASS | |
+| SM-01~06 | State machine (6 tests) | ✅ PASS | |
+| MAP-01~07 | Event mapping (7 tests) | ✅ PASS | |
+| API-* | All 7 endpoints + concurrency + POST | ✅ PASS | 9 tests |

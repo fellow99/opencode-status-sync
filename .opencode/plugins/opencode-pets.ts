@@ -4,7 +4,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 // Types
 // ---------------------------------------------------------------------------
 
-/** Configuration read from opencode.json → pets key */
+/** Configuration read from opencode-pets.json */
 interface PetsConfig {
   baseURL: string
 }
@@ -41,26 +41,26 @@ const SESSION_STATE_MAP: Record<string, PetState> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Read pets configuration from opencode.json in the project directory.
+ * Read pets configuration from opencode-pets.json in the project directory.
  * Returns null if no valid config is found — the plugin operates in disabled mode.
  */
 async function readConfig(
   directory: string,
   log: (level: LogLevel, message: string, extra?: Record<string, unknown>) => Promise<void>,
 ): Promise<PetsConfig | null> {
-  const configPath = `${directory}/opencode.json`
+  const configPath = `${directory}/opencode-pets.json`
   try {
     const file = Bun.file(configPath)
     if (!(await file.exists())) {
-      await log("debug", "opencode.json not found")
+      await log("debug", "opencode-pets.json not found")
       return null
     }
 
     const content = await file.json()
-    const baseURL: unknown = content?.pets?.baseURL
+    const baseURL: unknown = content?.baseURL
 
     if (!baseURL || typeof baseURL !== "string" || baseURL.trim().length === 0) {
-      await log("debug", "pets.baseURL missing or empty in opencode.json")
+      await log("debug", "baseURL missing or empty in opencode-pets.json")
       return null
     }
 
@@ -89,7 +89,7 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   const config = await readConfig(directory, log)
 
   if (!config) {
-    await log("warn", "No valid pets.baseURL configured. Plugin disabled.")
+    await log("warn", "No valid baseURL in opencode-pets.json. Plugin disabled.")
     return {}
   }
 

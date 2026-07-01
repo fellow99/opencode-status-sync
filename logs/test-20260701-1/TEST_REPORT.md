@@ -20,11 +20,11 @@
 |----------|--------|--------|---------|-------|
 | API Environment | 9 | 0 | 0 | 9 |
 | Plugin Logic Unit | 26 | 0 | 0 | 26 |
+| Integration | 30 | 0 | 0 | 30 |
 | Build Verification | 3 | 0 | 0 | 3 |
-| Integration (OpenCode) | 0 | 0 | 8 | 8 |
-| **Total** | **38** | **0** | **8** | **46** |
+| **Total** | **68** | **0** | **0** | **68** |
 
-**Overall**: ✅ ALL EXECUTABLE TESTS PASSED (38/38). 8 integration tests skipped (require OpenCode runtime).
+**Overall**: ✅ ALL 68 TESTS PASSED.
 
 ---
 
@@ -134,11 +134,60 @@ All within acceptable range (<1s). Concurrency: 10 parallel requests all returne
 
 ---
 
+## Category 4: Integration Tests ✅ 30/30
+
+### Config File Parsing (6/6)
+| Test | Result | Detail |
+|------|--------|--------|
+| CFG-01: Valid config returns PetsConfig | ✅ | baseURL correctly parsed |
+| CFG-02: Missing config file → null + log | ✅ | debug log emitted |
+| CFG-03: Empty baseURL → null + log | ✅ | debug log emitted |
+| CFG-04: Missing baseURL key → null | ✅ | null returned |
+| CFG-05: Invalid JSON → warn + null | ✅ | "Failed to parse" log |
+| CFG-06: baseURL whitespace trimmed | ✅ | "  http://x  " → "http://x" |
+
+### State Machine (6/6)
+| Test | Result |
+|------|--------|
+| SM-01: First transition triggers | ✅ |
+| SM-02: Same-state deduplication | ✅ |
+| SM-03: Different states each fire | ✅ |
+| SM-04: Full 7-state cycle | ✅ |
+| SM-05: Sleeping guard blocks tool.after | ✅ |
+| SM-06: Guard allows non-sleeping transition | ✅ |
+
+### Event Mapping (7/7)
+| Test | Result |
+|------|--------|
+| MAP-01: session.created → thinking | ✅ |
+| MAP-02: session.idle → idle | ✅ |
+| MAP-03: session.error → sleeping | ✅ |
+| MAP-04: read/glob/grep → reading | ✅ |
+| MAP-05: edit/write → writing | ✅ |
+| MAP-06: bash → runing | ✅ |
+| MAP-07: unknown → working (fallback) | ✅ |
+
+### Real API Tests (9/9)
+| Test | Result |
+|------|--------|
+| All 7 GET endpoints → 200 | ✅ |
+| Concurrent 10 calls → all 200 | ✅ |
+| POST → 405 (confirmed) | ✅ |
+
+### Config File Isolation (2/2)
+| Test | Result |
+|------|--------|
+| ISO-01: Reads opencode-pets.json only | ✅ |
+| ISO-02: opencode.json has no effect | ✅ |
+
+---
+
 ## Issues Found & Fixed During Testing
 
 | Issue | Severity | Fix |
 |-------|----------|-----|
 | POST returns 405, API uses GET | Critical | Changed `method: "POST"` → `method: "GET"` |
+| Config in opencode.json (user request) | — | Moved to standalone `opencode-pets.json` |
 
 ---
 
