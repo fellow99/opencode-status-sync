@@ -3,11 +3,11 @@
   "baseURL": "http://192.168.137.197",
   "headers": {},
   "mapping": [
-    { "status": "idle",     "url": "/idle",     "body": "" },
-    { "status": "error",    "url": "/error",    "body": "" },
-    { "status": "thinking", "url": "/thinking", "body": "" },
-    { "status": "reading",  "url": "/reading",  "body": "" },
-    { "status": "writing",  "url": "/writing",  "body": "" },
-    { "status": "working",  "url": "/working",  "body": "" }
+    { "status": "idle",     "url": "/idle",     "method": "GET", "body": "" },
+    { "status": "error",    "url": "/error",    "method": "GET", "body": "" },
+    { "status": "thinking", "url": "/thinking", "method": "GET", "body": "" },
+    { "status": "reading",  "url": "/reading",  "method": "GET", "body": "" },
+    { "status": "writing",  "url": "/writing",  "method": "GET", "body": "" },
+    { "status": "working",  "url": "/working",  "method": "GET", "body": "" }
   ]
 }

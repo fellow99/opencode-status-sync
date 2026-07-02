@@ -21,6 +21,8 @@ interface MappingEntry {
   status: string
   /** Relative URL path to call when this status is active (e.g., "/thinking") */
   url: string
+  /** HTTP method (default: "GET") */
+  method?: string
   /** Optional request body string (empty for GET requests) */
   body?: string
 }

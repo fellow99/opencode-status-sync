@@ -8,6 +8,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 interface MappingEntry {
   status: string
   url: string
+  method?: string
   body?: string
 }
 
@@ -233,10 +234,11 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
+    const method = mappingEntry.method ?? "GET"
 
     try {
       const fetchOptions: RequestInit = {
-        method: "GET",
+        method,
         signal: controller.signal,
       }
 
@@ -256,17 +258,17 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
       const response = await fetch(url, fetchOptions)
 
       if (response.ok) {
-        dlog(`[📡 status-sync] 📡 GET ${url} → ${response.status} OK`)
+        dlog(`[📡 status-sync] 📡 ${method} ${url} → ${response.status} OK`)
         await log("debug", `Notified status service: ${status}`, { url, status: response.status })
       } else {
-        dlog(`[📡 status-sync] ⚠️  GET ${url} → ${response.status}`)
+        dlog(`[📡 status-sync] ⚠️  ${method} ${url} → ${response.status}`)
         await log("warn", `Status service returned non-OK: ${status}`, {
           url,
           status: response.status,
         })
       }
     } catch (err) {
-      dlog(`[📡 status-sync] ❌ GET ${url} → ${String(err)}`)
+      dlog(`[📡 status-sync] ❌ ${method} ${url} → ${String(err)}`)
       await log("error", `Failed to notify status service: ${status}`, {
         url,
         error: String(err),
@@ -337,6 +339,11 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
   // ── Hooks ───────────────────────────────────────────────────────────
 
+  // ── Hooks registered ────────────────────────────────────────────────
+  dlog("[📡 status-sync] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
+  dlog("[📡 status-sync] ✅ Plugin ready — watching for OpenCode events...")
+  dlog("[📡 status-sync] ──────────────────────────────────")
+
   return {
     /**
      * Session-level events via the generic event hook.
@@ -372,9 +379,4 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
       }
     },
   }
-
-  // ── Hooks registered ────────────────────────────────────────────────
-  dlog("[📡 status-sync] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
-  dlog("[📡 status-sync] ✅ Plugin ready — watching for OpenCode events...")
-  dlog("[📡 status-sync] ──────────────────────────────────")
 }
