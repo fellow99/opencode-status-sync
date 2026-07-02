@@ -1,78 +1,33 @@
 # Project Structure: opencode-status-sync
 
-## Directory Tree
-
 ```
 opencode-status-sync/
-│
-├── .opencode/                         # OpenCode project config
-│   └── plugins/                       # Local plugin directory
-│       └── opencode-status-sync.ts           # [PLANNED] Main plugin source
-│
-├── specs/                             # Specification documents
-│   ├── README.md                      # ✅ Docs index & reading guide
-│   ├── SPECS_CHECKLIST.md             # ✅ Spec completion checklist
-│   ├── STRUCTURE.md                   # ✅ This file
-│   ├── TECH.md                        # ✅ Technology selection
-│   ├── ARCHITECTURE.md                # ✅ System architecture
-│   ├── constitution.md                # ✅ Project principles
-│   ├── overall-spec.md                # ✅ Feature specification
-│   ├── overall-plan.md                # ✅ Implementation plan
-│   ├── overall-data-model.md          # ✅ Data models & types
-│   └── overall-test-cases.md          # ✅ Test cases (20 total)
-│
-├── logs/                              # Development & test logs
-│   └── test-YYYYMMDD-N/              # [PLANNED] Per-session test logs
-│       ├── TEST_CHECKLIST.md
-│       ├── test-scripts/
-│       ├── test-logs/
-│       └── TEST_REPORT.md
-│
-├── .git/                              # Git repository
-├── .gitignore                         # [PLANNED] Git ignore rules
-├── package.json                       # [PLANNED] Project metadata
-├── tsconfig.json                      # [PLANNED] TypeScript config
-├── opencode.json                      # [PLANNED] OpenCode config (example)
-└── README.md                          # [PLANNED] Project README
+├── .opencode/
+│   └── plugins/
+│       └── opencode-status-sync.ts   # 插件源码 (368 lines)
+├── specs/
+│   ├── README.md                     # 规格文档索引
+│   ├── SPECS_CHECKLIST.md            # 完成度追踪
+│   ├── TECH.md                       # 技术选型
+│   ├── ARCHITECTURE.md               # 系统架构
+│   ├── constitution.md               # 宪法原则
+│   ├── overall-spec.md               # 整体规格（摘要→引用模块）
+│   ├── overall-plan.md               # 整体方案（摘要→引用模块）
+│   ├── overall-data-model.md         # 数据模型（摘要→引用模块）
+│   ├── overall-test-cases.md         # 测试用例索引
+│   ├── STRUCTURE.md                  # 本文件
+│   ├── 001-status-sync/              # 状态同步插件模块
+│   │   ├── spec.md                   #   功能规格
+│   │   └── plan.md                   #   技术方案
+│   └── 002-config/                   # 重构历史文档
+│       ├── spec.md
+│       ├── plan.md
+│       ├── tasks.md
+│       ├── data-model.md
+│       ├── research.md
+│       └── quickstart.md
+├── opencode-status-sync.json         # 插件配置 (11 条映射)
+├── package.json                      # 项目元数据
+├── tsconfig.json                     # TypeScript 配置
+└── README.md                         # 用户文档
 ```
-
-## File Purposes
-
-### Plugin Source (to be created)
-| File | Purpose |
-|------|---------|
-| `.opencode/plugins/opencode-status-sync.ts` | Plugin entry — event hooks, state management, HTTP notifier |
-
-### Project Config (to be created)
-| File | Purpose |
-|------|---------|
-| `package.json` | Project metadata, dev dependencies (`@opencode-ai/plugin`, `typescript`) |
-| `tsconfig.json` | TypeScript configuration for IDE support |
-| `opencode.json` | Example OpenCode config with `baseURL in opencode-status-sync.json` |
-| `.gitignore` | Ignore patterns (node_modules, logs, etc.) |
-| `README.md` | Project introduction and usage guide |
-
-### Specification Documents (created)
-| File | Lines | Purpose |
-|------|-------|---------|
-| `specs/constitution.md` | ~110 | Core principles and quality gates |
-| `specs/overall-spec.md` | ~260 | Feature specification (FR, NFR, scenarios) |
-| `specs/overall-plan.md` | ~230 | Implementation plan with state machine |
-| `specs/ARCHITECTURE.md` | ~200 | Component architecture and data flow |
-| `specs/TECH.md` | ~110 | Technology selection with rationale |
-| `specs/overall-data-model.md` | ~190 | Type definitions and state transitions |
-| `specs/overall-test-cases.md` | ~310 | 23 test cases in 6 categories |
-| `specs/README.md` | ~50 | Document index |
-| `specs/SPECS_CHECKLIST.md` | ~60 | Completion tracking |
-| `specs/STRUCTURE.md` | ~60 | This file |
-
-## Statistics
-
-| Metric | Value |
-|--------|-------|
-| Spec documents | 10 |
-| Total spec lines | ~1,700 |
-| Plugin source files (planned) | 1 |
-| Config files (planned) | 4 |
-| Runtime dependencies | 0 |
-| Dev dependencies | 2 |

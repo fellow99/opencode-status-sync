@@ -2,57 +2,34 @@
 
 ## Project Identity
 
-**opencode-status-sync** is an OpenCode plugin that visualizes the AI agent's current activity state by sending status updates to a pet service API. Each state corresponds to a visual representation (sleeping, idle, thinking, reading, writing, running commands, working).
+**opencode-status-sync** 是一个 OpenCode 插件，监听 AI 助手活动并通过配置驱动 HTTP 映射同步到外部服务。
 
 ## Core Principles
 
-### 1. Non-Intrusive Operation
-The plugin MUST operate as a side-effect observer. It SHALL NOT:
-- Intercept or modify any OpenCode tool execution
-- Block or delay any OpenCode operation
-- Throw unhandled errors that affect OpenCode's normal functioning
-- Require user interaction during normal operation
+### 1. Non-Intrusive
+插件 MUST 作为观察者运行。不可拦截/修改/延迟任何 OpenCode 操作。
 
-### 2. Fail-Safe Design
-- API call failures SHALL be silently logged and never propagated
-- If the pet service is unreachable, the plugin SHALL degrade gracefully
-- The plugin SHALL function correctly even without the pet service running
+### 2. Fail-Safe
+HTTP 调用失败 MUST 静默记录。配置缺失→禁用模式。服务不可达→不抛错。
 
 ### 3. Minimal Dependencies
-- Prefer zero external runtime dependencies
-- Use only OpenCode-provided runtime APIs (fetch, Bun shell)
-- TypeScript types from `@opencode-ai/plugin` are dev-only
+运行时零外部依赖。仅使用 Bun 内建 `fetch` 和 OpenCode 上下文。
 
-### 4. Configurable
-- The baseURL of the pet service SHALL be user-configurable
-- Configuration SHALL be read from `opencode-status-sync.json`
-- Sensible defaults SHALL be provided where applicable
+### 4. Config-Driven
+所有扩展点→接口映射在 `opencode-status-sync.json` 中定义。无硬编码。
 
 ### 5. Observable
-- All status changes SHALL be logged via `client.app.log()` at debug level
-- Plugin initialization SHALL log the configured baseURL at info level
-- Errors SHALL be logged at error level with context
+状态变更 MUST 通过 `client.app.log()` 记录。debug 模式输出控制台日志。
 
-### 6. Single Responsibility
-The plugin does ONE thing: map OpenCode events to pet service API calls. It does NOT:
-- Manage pet state or animations
-- Provide UI components
-- Handle authentication or complex API flows
-- Cache or batch requests beyond basic deduplication
+### 6. Extension-Ready
+使用原始 OpenCode 扩展点名称。`"*"` 通配符兜底未映射项。
 
 ## Quality Gates
 
 | Gate | Criteria |
 |------|----------|
-| Type Safety | Zero TypeScript errors, no `as any` or `@ts-ignore` |
-| Build | Plugin file parses without syntax errors |
-| Runtime | Plugin loads in OpenCode without crashing |
-| Config | Missing or invalid config degrades gracefully |
-| API Failure | Pet service unreachable does not affect OpenCode |
-
-## Development Standards
-
-- Language: TypeScript (strict mode)
-- Runtime: Bun (OpenCode's runtime)
-- Testing: ACP-based integration testing where applicable
-- Versioning: Semantic versioning (0.x.y during initial development)
+| Type Safety | `bun x tsc --noEmit` 零错误，禁 `as any` / `@ts-ignore` |
+| Build | 插件文件无语法错误 |
+| Runtime | 加载不崩溃 |
+| Config | 缺失/无效时降级 |
+| API Failure | 服务不可达不影响 OpenCode |

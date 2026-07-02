@@ -1,176 +1,36 @@
 # Architecture: opencode-status-sync
 
-## System Context
+> 详细架构见：[001-status-sync/plan.md](./001-status-sync/plan.md) 第 3 节
+
+## 系统架构
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   OpenCode Runtime                    │
-│                                                       │
-│  ┌─────────────────────────────────────────────┐    │
-│  │          opencode-status-sync Plugin                 │    │
-│  │                                               │    │
-│  │  ┌──────────┐  ┌──────────┐  ┌───────────┐  │    │
-│  │  │  Config   │  │  State   │  │   HTTP     │  │    │
-│  │  │  Reader   │  │  Manager │  │  Notifier  │  │    │
-│  │  └─────┬─────┘  └────┬─────┘  └─────┬─────┘  │    │
-│  │        │              │              │         │    │
-│  │  ┌─────▼──────────────▼──────────────▼─────┐  │    │
-│  │  │           Event Dispatcher               │  │    │
-│  │  └──────────────────┬──────────────────────┘  │    │
-│  └─────────────────────┼─────────────────────────┘    │
-│                        │                               │
-│  ┌─────────────────────▼─────────────────────────┐    │
-│  │          OpenCode Event System                 │    │
-│  │  (session.*, tool.*, message.* events)         │    │
-│  └───────────────────────────────────────────────┘    │
-└───────────────────────┬─────────────────────────────┘
-                        │
-                         │ HTTP GET
-                         ▼
-┌─────────────────────────────────────────────────────┐
-│                 Pet Service (External)                │
-│                                                       │
-│  /thinking   /idle   /error   /reading               │
-│  /writing    /working                                 │
-└─────────────────────────────────────────────────────┘
+OpenCode Runtime
+  └── opencode-status-sync Plugin (368 lines)
+        ├── Config Reader    — readConfig() from JSON
+        ├── State Manager    — transitionTo() with dedup + debounce + terminal guard
+        ├── HTTP Notifier    — notify() with fetch + AbortController + try/finally
+        └── Hook Dispatcher  — event, tool.execute.before, tool.execute.after
+              ↓ HTTP
+        External Status Service (/idle, /error, /thinking, /reading, /writing, /working)
 ```
 
-## Component Architecture
+## 组件职责
 
-### 1. Config Reader
+| 组件 | 行号 | 职责 |
+|------|------|------|
+| Config Reader | L57-131 | 读取+验证 `opencode-status-sync.json`，返回 `StatusSyncConfig` 或 `null` |
+| State Manager | L262-325 | `transitionTo()`: 去重→终端守卫→即时/防抖→通知 |
+| HTTP Notifier | L205-260 | `notify()`: 映射查找→URL 构造→fetch（5s timeout+try/finally） |
+| Hook Dispatcher | L333-367 | 事件过滤（仅 session.*）→ 工具名透传 → after 守卫 |
 
-**Purpose**: Read plugin configuration from `opencode.json`.
+## 关键设计决策
 
-**Input**: Plugin context (`directory` path)
-**Output**: `PetsConfig { baseURL: string }`
-
-**Logic**:
-1. Read `opencode.json` from the project directory
-2. Parse the `pets` key
-3. If missing or invalid, return default/warning
-
-**Error Handling**: Missing config → log warning, return disabled state.
-
-### 2. Event Dispatcher
-
-**Purpose**: Subscribe to OpenCode events and route them to the state manager.
-
-**Events Subscribed**:
-- `session.created`, `session.idle`, `session.error` → via `event` hook
-- `tool.execute.before` → via dedicated hook
-
-**Mapping Logic**:
-```
-session.created     → "thinking"
-session.idle        → "idle"
-session.error       → "error"
-tool: read/glob/grep → "reading"
-tool: edit/write     → "writing"
-tool: bash/other     → "working"
-```
-
-### 3. State Manager
-
-**Purpose**: Track current state, deduplicate consecutive identical states, and debounce rapid transitions.
-
-**State**: `PetState` (one of: "thinking", "idle", "error", "reading", "writing", "working", "")
-
-**Logic**:
-- On new state request:
-  - If same as current state or pending debounce state → no-op (dedup)
-  - If `idle` or `error` → update immediately, cancel any pending debounce, trigger HTTP notifier
-  - Otherwise → set as pending, reset debounce timer (1000ms). When timer fires, update current state and trigger HTTP notifier
-- Debounce prevents rapid visual flicker from consecutive tool calls (e.g., read→bash→read→thinking)
-- `idle`/`error` skip debounce to ensure timely error/idle display
-
-### 4. HTTP Notifier
-
-**Purpose**: Send HTTP GET request to the pet service.
-
-**Input**: `baseURL: string`, `endpoint: string` (e.g., "/thinking")
-**Output**: void (fire-and-forget)
-
-**Logic**:
-1. Construct URL: `${baseURL}${endpoint}`
-2. Send GET with `fetch()`
-3. Handle response (ignore body, log status)
-4. Handle errors (log, never throw)
-
-**Error Handling**:
-- Network error → log error, continue
-- Timeout → log error, continue
-- Non-2xx response → log warning, continue
-- Never throw or reject
-
-## Data Flow
-
-```
-1. OpenCode fires event (e.g., "tool.execute.before" with tool="bash")
-2. Plugin's hook receives event
-3. Event Dispatcher maps tool name "bash" → state "working"
-4. State Manager checks: is "working" === currentState or pendingDebounceState?
-   - Yes: return (no-op)
-   - No: set pendingDebounceState = "working", start/reset 1000ms debounce timer
-5. After 1000ms, State Manager updates currentState, calls HTTP Notifier
-6. HTTP Notifier calls GET http://192.168.137.197/working
-7. Pet Service receives request, updates pet visual
-```
-
-## Deployment
-
-### As Local Plugin
-
-```
-~/.config/opencode/plugins/opencode-status-sync.ts  (global)
-# OR
-<project>/.opencode/plugins/opencode-status-sync.ts  (per-project)
-```
-
-### Configuration
-
-```json
-// opencode.json
-{
-  "pets": {
-    "baseURL": "http://192.168.137.197"
-  }
-}
-```
-
-## File Structure
-
-```
-opencode-status-sync/
-├── .opencode/
-│   └── plugins/
-│       └── opencode-status-sync.ts       # Plugin source (single file)
-├── specs/                         # Specification documents
-│   ├── README.md
-│   ├── SPECS_CHECKLIST.md
-│   ├── STRUCTURE.md
-│   ├── TECH.md
-│   ├── ARCHITECTURE.md            # This file
-│   ├── constitution.md
-│   ├── overall-spec.md
-│   ├── overall-plan.md
-│   ├── overall-data-model.md
-│   └── overall-test-cases.md
-├── logs/                          # Development & test logs
-├── package.json                   # Project metadata
-├── tsconfig.json                  # TypeScript config
-├── opencode.json                  # Example config
-└── README.md                      # Project README
-```
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Single file plugin | Minimizes complexity; under 300 lines covers all functionality |
-| `event` hook + `tool.execute.before` | Covers all session events AND tool-specific detection |
-| State deduplication in-memory | Avoids redundant API calls for rapid same-type tool executions |
-| 1000ms debounce on non-terminal states | Prevents visual flicker from rapid tool-call oscillation (thinking↔reading↔thinking↔writing) |
-| `idle`/`error` fire immediately | Terminal states must be displayed without delay; cancel any pending debounce |
-| Fire-and-forget HTTP (GET) | Non-blocking; API failures never affect OpenCode |
-| No retry logic | Pet service availability is not critical; simplicity over resilience |
-| No persistent state | Plugin is stateless across restarts; reset on each load |
+| 决策 | 实现 |
+|------|------|
+| 配置驱动 | `mapping[]` 数组中 `status` → `url`，无硬编码 |
+| 原始名称 | `event.type` / `input.tool` 直接作为 status key |
+| 通配符 | `"*"` 条目兜底所有未精确匹配的扩展点 |
+| 事件过滤 | `SESSION_STATE_EVENTS` 集合只允许 4 种 session 事件 |
+| 终端守卫 | `IMMEDIATE_STATUSES.has(currentStatus)` 阻止非终端覆盖 |
+| 防抖 | 1000ms，`setTimeout` + `clearTimeout` |

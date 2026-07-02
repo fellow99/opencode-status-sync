@@ -1,200 +1,39 @@
 # Data Model: opencode-status-sync
 
-## Overview
+> 详细数据模型见：[001-status-sync/plan.md](./001-status-sync/plan.md) 第 4 节
 
-The opencode-status-sync plugin has a minimal data model. It does not persist any data — all state is in-memory and ephemeral.
-
-## Configuration Model
-
-### PetsConfig
-
-The plugin's configuration, read from `opencode-status-sync.json`.
+## 核心类型
 
 ```typescript
-interface PetsConfig {
-  /** Base URL of the pet service API (e.g., "http://192.168.137.197") */
+interface StatusSyncConfig {
+  debug: boolean
   baseURL: string
+  headers: Record<string, string>
+  mapping: MappingEntry[]
+}
+
+interface MappingEntry {
+  status: string   // OpenCode 扩展点名称（session.idle, read, tool.execute.after, *）
+  url: string      // API 路径（/idle, /reading, /thinking, /working）
+  method?: string  // HTTP 方法，默认 GET
+  body?: string    // 请求体，默认 ""
 }
 ```
 
-**Validation Rules**:
-- `baseURL` MUST be a non-empty string
-- `baseURL` SHOULD be a valid URL (protocol + host)
-- If `baseURL` is missing or empty, the plugin operates in disabled mode
+## 扩展点映射
 
-**Source**: `opencode-status-sync.json`
+| 扩展点 | status key | 接口 |
+|--------|-----------|------|
+| `session.idle` | `session.idle` | `/idle` |
+| `session.error` | `session.error` | `/error` |
+| `session.created` | `session.created` | `/thinking` |
+| `session.status` | `session.status` | `/thinking` |
+| `tool.read/glob/grep` | `read`/`glob`/`grep` | `/reading` |
+| `tool.edit/write` | `edit`/`write` | `/writing` |
+| `tool.execute.after` | `tool.execute.after` | `/thinking` |
+| 其他工具 | `*` (通配符) | `/working` |
 
-### Config Example
+## 状态机
 
-```json
-{
-  "pets": {
-    "baseURL": "http://192.168.137.197"
-  }
-}
-```
-
-### Config Defaults
-
-| Field | Default | Behavior When Missing |
-|-------|---------|----------------------|
-| `baseURL` | `undefined` | Plugin logs warning, all API calls are skipped |
-
-## Runtime State Model
-
-### PluginState
-
-In-memory state tracked during plugin lifetime.
-
-```typescript
-interface PluginState {
-  /** Currently active pet state */
-  currentState: PetState
-  
-  /** Whether the plugin is active (has valid config) */
-  enabled: boolean
-  
-  /** Configured base URL */
-  baseURL: string | undefined
-}
-```
-
-### PetState
-
-Enumeration of possible pet visual states.
-
-```typescript
-type PetState = 
-  | "thinking"   // AI is generating a response or session just started
-  | "idle"       // AI is waiting for user input
-  | "error"      // Error state
-  | "reading"    // AI is reading files
-  | "writing"    // AI is writing/editing files
-  | "working"    // AI is running commands or executing other tools
-```
-
-### State Transitions
-
-```
-                    ┌──────────┐
-         ┌─────────→│ thinking │←─────────┐
-         │          └────┬─────┘          │
-         │               │                │
-    session.created   tool calls     tool complete
-         │               │           (debounced)
-         │          ┌────▼─────┐          │
-         │   ┌─────→│ reading  │─────┐    │
-         │   │      └──────────┘     │    │
-         │   │      ┌──────────┐     │    │
-         │   └─────→│ writing  │─────┤    │
-         │          └──────────┘     │    │
-         │          ┌──────────┐     │    │
-         │          │ working  │─────┘    │
-         │          └────┬─────┘          │
-         │               │                │
-         │          ┌────▼─────┐          │
-         │          │   idle   │          │
-         │          └──────────┘          │
-         │                               │
-         │          ┌──────────┐         │
-         └──────────│  error   │←────────┘
-                    └──────────┘
-                  session.error
-                  (immediate)
-```
-
-> Transitions to `thinking`, `reading`, `writing`, `working` are debounced at 1000ms. `idle` and `error` fire immediately and cancel any pending debounce.
-
-## Event Mapping Model
-
-### SessionEvent → PetState
-
-| OpenCode Session Event | PetState |
-|------------------------|----------|
-| `session.created` | `thinking` |
-| `session.idle` | `idle` |
-| `session.error` | `error` |
-
-### ToolEvent → PetState
-
-| OpenCode Tool | PetState |
-|---------------|----------|
-| `read` | `reading` |
-| `glob` | `reading` |
-| `grep` | `reading` |
-| `edit` | `writing` |
-| `write` | `writing` |
-| `bash` | `working` |
-| *(any other tool)* | `working` |
-
-### Debounce Rules
-
-| PetState | Debounce Policy |
-|----------|----------------|
-| `idle`, `error` | Fire immediately, cancel pending debounce |
-| `thinking`, `reading`, `writing`, `working` | Debounced at 1000ms |
-
-## API Request Model
-
-### PetServiceRequest
-
-HTTP request sent to the pet service.
-
-```typescript
-interface PetServiceRequest {
-  /** Full URL: {baseURL}/{endpoint} */
-  url: string
-  /** HTTP method (always POST) */
-  method: "POST"
-  /** Request body (empty or minimal) */
-  body?: string
-}
-```
-
-### Endpoints
-
-| Endpoint | Corresponding State |
-|----------|-------------------|
-| `/thinking` | thinking |
-| `/idle` | idle |
-| `/error` | error |
-| `/reading` | reading |
-| `/writing` | writing |
-| `/working` | working |
-
-## Logging Model
-
-### LogEntry
-
-Structured log entry via `client.app.log()`.
-
-```typescript
-interface LogEntry {
-  service: "opencode-status-sync"
-  level: "debug" | "info" | "warn" | "error"
-  message: string
-  extra?: Record<string, unknown>
-}
-```
-
-**Log Levels by Scenario**:
-
-| Scenario | Level | Extra Fields |
-|----------|-------|-------------|
-| Plugin initialized with baseURL | `info` | `{ baseURL }` |
-| State transition | `debug` | `{ from, to }` |
-| API call sent | `debug` | `{ url }` |
-| API call succeeded | `debug` | `{ url, status }` |
-| API call failed | `error` | `{ url, error }` |
-| Missing config | `warn` | `{ message }` |
-| Config read error | `warn` | `{ error }` |
-
-## No Persistence
-
-The plugin does NOT persist any state:
-- No file system writes (except through OpenCode's logging)
-- No database
-- No local storage
-- No cache files
-
-All state is reset when OpenCode restarts.
+无持久化状态。运行时追踪：`currentStatus`、`debounceTimer`、`pendingDebounceStatus`。
+终端状态（`session.idle`、`session.error`）即时触发并阻塞非终端覆盖。

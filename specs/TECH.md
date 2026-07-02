@@ -1,78 +1,21 @@
 # Technology Selection: opencode-status-sync
 
-## Runtime Environment
-
 | Aspect | Choice | Rationale |
 |--------|--------|-----------|
-| Runtime | **Bun** | OpenCode plugins run in Bun. This is non-negotiable. |
-| Language | **TypeScript** | Type safety for plugin development. `.ts` files natively supported. |
-| Package Manager | **Bun** (npm-compatible) | OpenCode uses `bun install` for plugin dependencies. |
+| Runtime | **Bun** | OpenCode 插件运行环境，不可选 |
+| Language | **TypeScript** (strict) | 类型安全；`.ts` 原生支持 |
+| HTTP Client | **Native `fetch`** | Bun 内建，零依赖 |
+| Config | **JSON** (`opencode-status-sync.json`) | OpenCode 生态标准 |
+| Types | `@opencode-ai/plugin` ^1.17.12 | 官方类型定义（dev only） |
+| Dev Tools | `typescript` ^5.7, `@types/bun` ^1.3.14 | 编译+IDE 支持 |
 
-## Plugin SDK
+### Runtime Dependencies: 0
 
-| Aspect | Choice | Rationale |
-|--------|--------|-----------|
-| Type Definitions | `@opencode-ai/plugin` | Official type package for `Plugin`, `tool()`, etc. Dev dependency only. |
-| SDK Client | OpenCode `client` object | Provided via plugin context. Used for logging (`client.app.log()`). |
-| Shell Execution | Bun `$` shell API | Provided via plugin context. Used for optional advanced operations. |
+仅使用 Bun 内建 `fetch` 和 OpenCode 插件上下文 (`client`, `$`)。
 
-## HTTP Client
+### 源文件
 
-| Aspect | Choice | Rationale |
-|--------|--------|-----------|
-| HTTP Library | **Native `fetch`** | Bun provides a built-in `fetch` implementation. Zero dependencies. |
-| Alternative Considered | `node-fetch`, `axios` | Rejected: unnecessary dependency overhead. |
-
-## Configuration
-
-| Aspect | Choice | Rationale |
-|--------|--------|-----------|
-|  `opencode-status-sync.json` | `opencode-status-sync.json` | Native OpenCode config file. No separate config file needed. |
-| Config Format | JSON | Standard for OpenCode ecosystem. |
-| Required Fields | `baseURL` | URL of the pet service API. |
-| Default | `http://localhost:3000` | Sensible local default. |
-
-## Project Structure
-
-```
-opencode-status-sync/
-├── .opencode/
-│   └── plugins/
-│       └── opencode-status-sync.ts       # Plugin entry point
-├── specs/                         # Specification documents
-├── logs/                          # Development and test logs
-├── package.json                   # Root package (npm publishing)
-└── opencode.json                  # OpenCode project config
-```
-
-Note: `.opencode/package.json` is NOT required because the plugin has no external runtime dependencies.
-
-## TypeScript Configuration
-
-The plugin is loaded directly by Bun as a `.ts` file. No separate `tsconfig.json` is required for the plugin itself, but one is recommended for IDE support.
-
-## Dependencies
-
-### Runtime (0)
-
-None. The plugin uses only:
-- Bun built-in `fetch`
-- OpenCode plugin context (`client`, `$`)
-
-### Development
-
-| Package | Purpose |
-|---------|---------|
-| `@opencode-ai/plugin` | TypeScript type definitions for plugin development |
-| `typescript` | TypeScript compiler (dev only) |
-| `@types/bun` | Bun type definitions (dev only) |
-
-## Rejected Alternatives
-
-| Alternative | Reason Rejected |
-|-------------|----------------|
-| `axios` / `got` | Adds dependency. Bun `fetch` is sufficient for simple HTTP calls. |
-| JavaScript (no types) | Violates constitution principle of type safety. |
-| Separate config file (`.petsrc`) | Unnecessary. `opencode.json` is the standard config source. |
-| WebSocket connection | Over-engineering. Simple HTTP GET per state change is sufficient. |
-| State management library | Over-engineering. Simple variable tracking current state is enough. |
+| 文件 | 行数 | 用途 |
+|------|------|------|
+| `.opencode/plugins/opencode-status-sync.ts` | 368 | 插件全部逻辑 |
+| `opencode-status-sync.json` | 18 | 默认配置（11 条映射） |
