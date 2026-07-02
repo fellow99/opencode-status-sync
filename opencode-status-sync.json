@@ -1,6 +1,6 @@
 {
   "debug": true,
-  "baseURL": "http://192.168.137.197",
+  "baseURL": "http://192.168.137.188",
   "headers": {},
   "mapping": [
     { "status": "session.idle",          "url": "/idle",     "method": "GET", "body": "" },

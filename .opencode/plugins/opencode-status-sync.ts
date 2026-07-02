@@ -39,6 +39,14 @@ const IMMEDIATE_STATUSES = new Set(["session.idle", "session.error"])
 /** OpenCode extension points that represent error (guard tool.execute.after) */
 const ERROR_STATUSES = new Set(["session.error"])
 
+/** Session events that represent actual state changes — all others are ignored */
+const SESSION_STATE_EVENTS = new Set([
+  "session.created",
+  "session.status",
+  "session.idle",
+  "session.error",
+])
+
 /** Wildcard status — fallback when no exact mapping found */
 const WILDCARD_STATUS = "*"
 
@@ -273,6 +281,12 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
       return
     }
 
+    // Guard: terminal states (idle/error) block non-terminal overrides
+    if (IMMEDIATE_STATUSES.has(currentStatus) && !IMMEDIATE_STATUSES.has(newStatus)) {
+      dlog(`[📡 status-sync] ⏭️  ${newStatus} (session already ${currentStatus}, skipped)`)
+      return
+    }
+
     // Terminal extension points fire immediately
     if (IMMEDIATE_STATUSES.has(newStatus)) {
       flushDebounce()
@@ -318,10 +332,12 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
   return {
     /**
-     * OpenCode events: pass event.type directly as the extension point status.
-     * e.g. session.created → lookup "session.created" in config.mapping
+     * OpenCode events: only session state events trigger transitions.
+     * Filters out message.*, file.*, todo.*, tui.* etc. to prevent
+     * wildcard-mapped noise from overriding terminal states.
      */
     event: async ({ event }) => {
+      if (!SESSION_STATE_EVENTS.has(event.type)) return
       dlog(`[📡 status-sync] 📨 event: ${event.type}`)
       await transitionTo(event.type)
     },
@@ -341,12 +357,12 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
      * Guards against transitioning if currently in an error state.
      */
     "tool.execute.after": async () => {
-      if (!ERROR_STATUSES.has(currentStatus)) {
-        dlog(`[📡 status-sync] ✅ tool done → tool.execute.after`)
-        await transitionTo("tool.execute.after")
-      } else {
-        dlog("[📡 status-sync] ⏸️  tool done but error (guarded)")
+      if (ERROR_STATUSES.has(currentStatus) || currentStatus === "session.idle") {
+        dlog(`[📡 status-sync] ⏸️  tool done but guarded (${currentStatus})`)
+        return
       }
+      dlog(`[📡 status-sync] ✅ tool done → tool.execute.after`)
+      await transitionTo("tool.execute.after")
     },
   }
 }
