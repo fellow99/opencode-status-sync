@@ -4,7 +4,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 // Types
 // ---------------------------------------------------------------------------
 
-/** A single mapping entry: logical status name → API endpoint */
+/** A single mapping entry: OpenCode extension point → API endpoint */
 interface MappingEntry {
   status: string
   url: string
@@ -33,29 +33,14 @@ interface AppLogInput {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Default mappings — applied when config.mapping is empty for built-in statuses
-// ---------------------------------------------------------------------------
+/** OpenCode extension points that fire immediately (no debounce) */
+const IMMEDIATE_STATUSES = new Set(["session.idle", "session.error"])
 
-/** Tool name → default status (used as fallback, overridable via config) */
-const DEFAULT_TOOL_STATUS: Record<string, string> = {
-  read: "reading",
-  glob: "reading",
-  grep: "reading",
-  edit: "writing",
-  write: "writing",
-}
+/** OpenCode extension points that represent error (guard tool.execute.after) */
+const ERROR_STATUSES = new Set(["session.error"])
 
-/** Session event type → default status */
-const DEFAULT_SESSION_STATUS: Record<string, string> = {
-  "session.created": "thinking",
-  "session.status": "thinking",
-  "session.idle": "idle",
-  "session.error": "error",
-}
-
-/** Status after any tool completes (unless in error) */
-const POST_TOOL_STATUS = "thinking"
+/** Wildcard status — fallback when no exact mapping found */
+const WILDCARD_STATUS = "*"
 
 // ---------------------------------------------------------------------------
 // Config Reader
@@ -141,24 +126,12 @@ async function readConfig(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Look up a mapping entry by status name in the config mapping array */
+/** Look up a mapping entry by extension point name. Falls back to "*" wildcard. */
 function findMapping(config: StatusSyncConfig, status: string): MappingEntry | undefined {
-  return config.mapping.find((m) => m.status === status)
-}
-
-/** Determine if a status is a terminal (immediate) status — idle & error fire immediately */
-function isImmediateStatus(status: string): boolean {
-  return status === "idle" || status === "error"
-}
-
-/** Resolve the status name for a given tool name */
-function resolveToolStatus(toolName: string): string {
-  return DEFAULT_TOOL_STATUS[toolName] ?? "working"
-}
-
-/** Resolve the status name for a session event type */
-function resolveSessionStatus(eventType: string): string | undefined {
-  return DEFAULT_SESSION_STATUS[eventType]
+  const exact = config.mapping.find((m) => m.status === status)
+  if (exact) return exact
+  // Fallback to wildcard for unmapped extension points (e.g. unknown tools → /working)
+  return config.mapping.find((m) => m.status === WILDCARD_STATUS)
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +173,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
     return {}
   }
 
-  const cfg = config // narrowed non-null reference after early return
+  const cfg = config
 
   dlog(`[📡 status-sync] ✅ Config loaded: baseURL = ${cfg.baseURL}`)
   dlog(`[📡 status-sync] 📋 ${cfg.mapping.length} mapping entries:`)
@@ -225,7 +198,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
   async function notify(status: string): Promise<void> {
     const mappingEntry = findMapping(cfg, status)
     if (!mappingEntry) {
-      dlog(`[📡 status-sync] ⚠️  No mapping found for status "${status}"`)
+      dlog(`[📡 status-sync] ⚠️  No mapping found for extension point "${status}"`)
       return
     }
 
@@ -288,7 +261,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
   }
 
   async function transitionTo(newStatus: string): Promise<void> {
-    // Verify this status has a valid mapping
+    // Verify this status has a valid mapping (exact or wildcard)
     if (!findMapping(cfg, newStatus)) {
       dlog(`[📡 status-sync] ⏭️  "${newStatus}" (no mapping, skipped)`)
       return
@@ -300,8 +273,8 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
       return
     }
 
-    // Terminal states fire immediately (fire-and-forget to avoid blocking)
-    if (isImmediateStatus(newStatus)) {
+    // Terminal extension points fire immediately
+    if (IMMEDIATE_STATUSES.has(newStatus)) {
       flushDebounce()
       const prevStatus = currentStatus
       currentStatus = newStatus
@@ -310,11 +283,11 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
         from: prevStatus || null,
         to: newStatus,
       })
-      notify(newStatus).catch(() => {}) // fire-and-forget; errors logged inside notify
+      notify(newStatus).catch(() => {})
       return
     }
 
-    // Non-terminal states: debounce
+    // Non-terminal: debounce
     pendingDebounceStatus = newStatus
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer)
@@ -339,41 +312,38 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
   // ── Hooks ───────────────────────────────────────────────────────────
 
-  // ── Hooks registered ────────────────────────────────────────────────
   dlog("[📡 status-sync] 🎧 Hooks registered: event, tool.execute.before, tool.execute.after")
   dlog("[📡 status-sync] ✅ Plugin ready — watching for OpenCode events...")
   dlog("[📡 status-sync] ──────────────────────────────────")
 
   return {
     /**
-     * Session-level events via the generic event hook.
-     * Maps session.created/session.status → thinking, session.idle → idle, session.error → error.
+     * OpenCode events: pass event.type directly as the extension point status.
+     * e.g. session.created → lookup "session.created" in config.mapping
      */
     event: async ({ event }) => {
-      const status = resolveSessionStatus(event.type)
-      if (status) {
-        dlog(`[📡 status-sync] 📨 event: ${event.type} → ${status}`)
-        await transitionTo(status)
-      }
+      dlog(`[📡 status-sync] 📨 event: ${event.type}`)
+      await transitionTo(event.type)
     },
 
     /**
-     * Before a tool executes: map tool name to status.
-     * read/glob/grep → reading, edit/write → writing, bash/others → working.
+     * Before a tool executes: pass input.tool directly as the extension point status.
+     * e.g. tool "read" → lookup "read" in config.mapping (falls back to "*" if unmapped)
      */
     "tool.execute.before": async (input) => {
-      const status = resolveToolStatus(input.tool)
-      dlog(`[📡 status-sync] 🔧 tool: ${input.tool} → ${status}`)
-      await transitionTo(status)
+      dlog(`[📡 status-sync] 🔧 tool: ${input.tool}`)
+      await transitionTo(input.tool)
     },
 
     /**
-     * After a tool completes: back to thinking, unless in terminal error state.
+     * After any tool completes: back to thinking state.
+     * Uses "tool.execute.after" as the extension point — map it in config.
+     * Guards against transitioning if currently in an error state.
      */
     "tool.execute.after": async () => {
-      if (currentStatus !== "error") {
-        dlog("[📡 status-sync] ✅ tool done → thinking")
-        await transitionTo(POST_TOOL_STATUS)
+      if (!ERROR_STATUSES.has(currentStatus)) {
+        dlog(`[📡 status-sync] ✅ tool done → tool.execute.after`)
+        await transitionTo("tool.execute.after")
       } else {
         dlog("[📡 status-sync] ⏸️  tool done but error (guarded)")
       }

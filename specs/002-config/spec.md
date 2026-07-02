@@ -87,12 +87,17 @@ Restructure the opencode-status-sync plugin into opencode-status-sync with a ful
   "baseURL": "http://192.168.137.197",
   "headers": {},
   "mapping": [
-    { "status": "idle",     "url": "/idle",     "method": "GET", "body": "" },
-    { "status": "error",    "url": "/error",    "method": "GET", "body": "" },
-    { "status": "thinking", "url": "/thinking", "method": "GET", "body": "" },
-    { "status": "reading",  "url": "/reading",  "method": "GET", "body": "" },
-    { "status": "writing",  "url": "/writing",  "method": "GET", "body": "" },
-    { "status": "working",  "url": "/working",  "method": "GET", "body": "" }
+    { "status": "session.idle",          "url": "/idle",     "method": "GET", "body": "" },
+    { "status": "session.error",         "url": "/error",    "method": "GET", "body": "" },
+    { "status": "session.created",       "url": "/thinking", "method": "GET", "body": "" },
+    { "status": "session.status",        "url": "/thinking", "method": "GET", "body": "" },
+    { "status": "read",                  "url": "/reading",  "method": "GET", "body": "" },
+    { "status": "glob",                  "url": "/reading",  "method": "GET", "body": "" },
+    { "status": "grep",                  "url": "/reading",  "method": "GET", "body": "" },
+    { "status": "edit",                  "url": "/writing",  "method": "GET", "body": "" },
+    { "status": "write",                 "url": "/writing",  "method": "GET", "body": "" },
+    { "status": "tool.execute.after",    "url": "/thinking", "method": "GET", "body": "" },
+    { "status": "*",                     "url": "/working",  "method": "GET", "body": "" }
   ]
 }
 ```
@@ -104,24 +109,30 @@ Restructure the opencode-status-sync plugin into opencode-status-sync with a ful
 | `debug` | 否 | `false` | 不填则跳过调试日志 |
 | `baseURL` | 是 | — | 接口环境根地址 |
 | `headers` | 否 | `{}` | 不填则无需注入额外请求头 |
-| `mapping` | 是 | — | 扩展点→接口映射数组 |
-| `mapping[].status` | 是 | — | **OpenCode 扩展点**（状态、事件、调用等逻辑名称） |
+| `mapping` | 是 | — | OpenCode 扩展点→接口映射数组 |
+| `mapping[].status` | 是 | — | **OpenCode 原始扩展点名称**（事件类型/工具名/hook名），`"*"` 为通配符兜底 |
 | `mapping[].url` | 是 | — | 对应接口环境的接口路径 |
 | `mapping[].method` | 否 | `"GET"` | HTTP 方法 |
 | `mapping[].body` | 否 | `""` | 请求体字符串 |
 
-### OpenCode 扩展点 → status 对应表
+### OpenCode 扩展点 → 接口映射逻辑
+`status` 使用 OpenCode 原始扩展点名称，不做翻译：
 
-| OpenCode 扩展点 | 触发机制 | status | 说明 |
-|----------------|---------|--------|------|
-| `session.created` | `event` hook | `thinking` | 会话创建/用户发送消息 |
-| `session.status` | `event` hook | `thinking` | 会话状态变更 |
-| `session.idle` | `event` hook | `idle` | 会话空闲，等待用户 |
-| `session.error` | `event` hook | `error` | 会话发生错误 |
-| `tool.read` / `glob` / `grep` | `tool.execute.before` | `reading` | 读取文件/搜索 |
-| `tool.edit` / `write` | `tool.execute.before` | `writing` | 编辑/写入文件 |
-| `tool.bash` / 其他工具 | `tool.execute.before` | `working` | 执行命令/其他操作 |
-| 任意工具执行完毕 | `tool.execute.after` | `thinking` | 工具完成，回到思考 |
+| OpenCode 扩展点 | 原始名称 | 传入方式 | 接口 |
+|----------------|---------|---------|------|
+| `session.idle` | `session.idle` | `event` hook → `event.type` | `/idle` |
+| `session.error` | `session.error` | `event` hook → `event.type` | `/error` |
+| `session.created` | `session.created` | `event` hook → `event.type` | `/thinking` |
+| `session.status` | `session.status` | `event` hook → `event.type` | `/thinking` |
+| `tool.read` | `read` | `tool.execute.before` → `input.tool` | `/reading` |
+| `tool.glob` | `glob` | `tool.execute.before` → `input.tool` | `/reading` |
+| `tool.grep` | `grep` | `tool.execute.before` → `input.tool` | `/reading` |
+| `tool.edit` | `edit` | `tool.execute.before` → `input.tool` | `/writing` |
+| `tool.write` | `write` | `tool.execute.before` → `input.tool` | `/writing` |
+| `tool.execute.after` | `tool.execute.after` | hook 触发 | `/thinking` |
+| 通配符（其他工具） | `*` | 未匹配时兜底 | `/working` |
+
+`"*"` 为通配符：任何未精确匹配的扩展点都会走通配符映射（如 `bash`、`task` 等工具 → `/working`）。
 
 ## Event-to-Status Mapping Logic
 
