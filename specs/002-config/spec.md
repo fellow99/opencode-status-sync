@@ -55,7 +55,7 @@ Restructure the opencode-status-sync plugin into opencode-status-sync with a ful
 | FR-02 | Configuration SHALL be read from `opencode-status-sync.json` in the project directory | P0 |
 | FR-03 | Config SHALL support `debug` (boolean), `baseURL` (string), `headers` (object), and `mapping` (array) fields | P0 |
 | FR-04 | Each mapping entry SHALL contain `status` (string), `url` (string), and optional `body` (string) | P0 |
-| FR-05 | Plugin SHALL subscribe to all available OpenCode hook types: `event`, `tool.execute.before`, `tool.execute.after`, `shell.env` | P0 |
+| FR-05 | Plugin SHALL subscribe to OpenCode hook types: `event`, `tool.execute.before`, `tool.execute.after` | P0 |
 | FR-06 | Plugin SHALL map OpenCode session events to configured statuses via the `event` hook | P0 |
 | FR-07 | Plugin SHALL map tool names to configured statuses via `tool.execute.before` and `tool.execute.after` hooks | P0 |
 | FR-08 | Plugin SHALL support all documented OpenCode event types (session.*, tool.*, message.*, file.*, tui.*, etc.) | P1 |

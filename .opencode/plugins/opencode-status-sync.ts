@@ -22,6 +22,16 @@ interface StatusSyncConfig {
 /** Log levels used by the plugin */
 type LogLevel = "debug" | "info" | "warn" | "error"
 
+/** Narrowed type for client.app.log input — avoids `as any` */
+interface AppLogInput {
+  body: {
+    service: string
+    level: LogLevel
+    message: string
+    extra?: Record<string, unknown>
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Default mappings — applied when config.mapping is empty for built-in statuses
 // ---------------------------------------------------------------------------
@@ -75,10 +85,29 @@ async function readConfig(
       return null
     }
 
-    // Validate mapping
+    // Validate mapping — filter entries missing required fields
     const mapping: unknown = content?.mapping
     if (!Array.isArray(mapping) || mapping.length === 0) {
       await log("debug", "mapping missing or empty in opencode-status-sync.json")
+      return null
+    }
+
+    const validMapping: MappingEntry[] = []
+    for (const entry of mapping) {
+      if (
+        entry &&
+        typeof entry === "object" &&
+        typeof (entry as Record<string, unknown>).status === "string" &&
+        (entry as Record<string, unknown>).status !== "" &&
+        typeof (entry as Record<string, unknown>).url === "string" &&
+        (entry as Record<string, unknown>).url !== ""
+      ) {
+        validMapping.push(entry as MappingEntry)
+      }
+    }
+
+    if (validMapping.length === 0) {
+      await log("debug", "mapping has no valid entries in opencode-status-sync.json")
       return null
     }
 
@@ -99,7 +128,7 @@ async function readConfig(
       baseURL: baseURL.trim(),
       debug,
       headers: validHeaders,
-      mapping,
+      mapping: validMapping,
     }
   } catch (err) {
     await log("warn", `Failed to parse ${configPath}: ${String(err)}`)
@@ -142,24 +171,25 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
     if (debugEnabled) console.info(...args)
   }
 
-  dlog("[📡 status-sync] ──────────────────────────────────")
-  dlog("[📡 status-sync] 🚀 Plugin loading...")
-  dlog(`[📡 status-sync] 📂 Project dir: ${directory}`)
-
   // ── Logging helper ──────────────────────────────────────────────────
   async function log(
     level: LogLevel,
     message: string,
     extra?: Record<string, unknown>,
   ): Promise<void> {
-    await client.app.log({ body: { service: "opencode-status-sync", level, message, extra } } as any)
+    const logInput: AppLogInput = { body: { service: "opencode-status-sync", level, message, extra } }
+    await client.app.log(logInput as Parameters<typeof client.app.log>[0])
   }
 
   // ── Read configuration ──────────────────────────────────────────────
   const configPath = `${directory}/opencode-status-sync.json`
-  dlog(`[📡 status-sync] 📋 Reading config: ${configPath}`)
-
   const config = await readConfig(directory, log)
+  debugEnabled = config?.debug ?? false
+
+  dlog("[📡 status-sync] ──────────────────────────────────")
+  dlog("[📡 status-sync] 🚀 Plugin loading...")
+  dlog(`[📡 status-sync] 📂 Project dir: ${directory}`)
+  dlog(`[📡 status-sync] 📋 Reading config: ${configPath}`)
 
   if (!config) {
     console.warn(`[📡 status-sync] ⚠️  opencode-status-sync.json not found or invalid`)
@@ -169,20 +199,21 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
     return {}
   }
 
-  dlog(`[📡 status-sync] ✅ Config loaded: baseURL = ${config.baseURL}`)
-  dlog(`[📡 status-sync] 📋 ${config.mapping.length} mapping entries:`)
-  for (const m of config.mapping) {
-    dlog(`[📡 status-sync]    ${m.status} → ${config.baseURL}${m.url}`)
+  const cfg = config // narrowed non-null reference after early return
+
+  dlog(`[📡 status-sync] ✅ Config loaded: baseURL = ${cfg.baseURL}`)
+  dlog(`[📡 status-sync] 📋 ${cfg.mapping.length} mapping entries:`)
+  for (const m of cfg.mapping) {
+    dlog(`[📡 status-sync]    ${m.status} → ${cfg.baseURL}${m.url}`)
   }
 
   await log("info", "opencode-status-sync initialized", {
-    baseURL: config.baseURL,
-    mappingCount: config.mapping.length,
+    baseURL: cfg.baseURL,
+    mappingCount: cfg.mapping.length,
   })
 
   // ── State tracking ──────────────────────────────────────────────────
-  const { baseURL, headers: configHeaders } = config
-  debugEnabled = config.debug
+  const { baseURL, headers: configHeaders } = cfg
   const DEBOUNCE_MS = 1000
 
   let currentStatus = ""
@@ -191,7 +222,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
   // ── HTTP Notifier ───────────────────────────────────────────────────
   async function notify(status: string): Promise<void> {
-    const mappingEntry = findMapping(config!, status)
+    const mappingEntry = findMapping(cfg, status)
     if (!mappingEntry) {
       dlog(`[📡 status-sync] ⚠️  No mapping found for status "${status}"`)
       return
@@ -200,16 +231,15 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
     const normalizedBase = baseURL.replace(/\/+$/, "")
     const url = `${normalizedBase}${mappingEntry.url}`
 
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
 
+    try {
       const fetchOptions: RequestInit = {
         method: "GET",
         signal: controller.signal,
       }
 
-      // Add configured headers
       const headerKeys = Object.keys(configHeaders)
       if (headerKeys.length > 0) {
         const headers = new Headers()
@@ -219,13 +249,11 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
         fetchOptions.headers = headers
       }
 
-      // Add body if configured
       if (mappingEntry.body && mappingEntry.body.length > 0) {
         fetchOptions.body = mappingEntry.body
       }
 
       const response = await fetch(url, fetchOptions)
-      clearTimeout(timeout)
 
       if (response.ok) {
         dlog(`[📡 status-sync] 📡 GET ${url} → ${response.status} OK`)
@@ -243,6 +271,8 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
         url,
         error: String(err),
       })
+    } finally {
+      clearTimeout(timeout)
     }
   }
 
@@ -257,7 +287,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
 
   async function transitionTo(newStatus: string): Promise<void> {
     // Verify this status has a valid mapping
-    if (!findMapping(config!, newStatus)) {
+    if (!findMapping(cfg, newStatus)) {
       dlog(`[📡 status-sync] ⏭️  "${newStatus}" (no mapping, skipped)`)
       return
     }
@@ -268,7 +298,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
       return
     }
 
-    // Terminal states fire immediately
+    // Terminal states fire immediately (fire-and-forget to avoid blocking)
     if (isImmediateStatus(newStatus)) {
       flushDebounce()
       const prevStatus = currentStatus
@@ -278,7 +308,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
         from: prevStatus || null,
         to: newStatus,
       })
-      await notify(newStatus)
+      notify(newStatus).catch(() => {}) // fire-and-forget; errors logged inside notify
       return
     }
 
