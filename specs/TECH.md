@@ -19,3 +19,9 @@
 |------|------|------|
 | `.opencode/plugins/opencode-status-sync.ts` | 368 | 插件全部逻辑 |
 | `opencode-status-sync.json` | 18 | 默认配置（11 条映射） |
+
+## 参考文档
+
+- [OpenCode 插件机制](https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/plugins.mdx) — 官方插件开发指南
+- [OpenCode 文档](https://opencode.ai/docs/) — 官方文档入口
+- [OpenCode 代码库](https://github.com/anomalyco/opencode) — 源码仓库

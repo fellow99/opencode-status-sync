@@ -162,6 +162,15 @@ bun x tsc --noEmit
 
 ---
 
+## OpenCode 相关文档
+
+- [OpenCode 官方网站](https://opencode.ai/)
+- [OpenCode 文档](https://opencode.ai/docs/)
+- [OpenCode 代码库](https://github.com/anomalyco/opencode)
+- [插件机制文档](https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/plugins.mdx)
+
+---
+
 ## License
 
 MIT
