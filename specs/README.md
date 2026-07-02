@@ -1,8 +1,8 @@
-# opencode-pets — Specification Documents
+# opencode-status-sync — Specification Documents
 
 ## Project Overview
 
-**opencode-pets** is an OpenCode plugin that monitors the AI agent's activity in real-time and sends status updates to a pet visualization service. When OpenCode is thinking, reading files, writing code, running commands, or idling — the pet reflects that state visually.
+**opencode-status-sync** is an OpenCode plugin that monitors the AI agent's activity in real-time and sends status updates to a pet visualization service. When OpenCode is thinking, reading files, writing code, running commands, or idling — the pet reflects that state visually.
 
 ## Document Index
 
@@ -30,7 +30,7 @@
 8. **STRUCTURE.md** — Navigate the codebase
 
 ## Feature ID
-`001-opencode-pets-plugin`
+`001-opencode-status-sync-plugin`
 
 ## Key Links
 

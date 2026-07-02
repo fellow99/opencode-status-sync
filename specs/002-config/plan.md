@@ -64,7 +64,7 @@ interface MappingEntry {
 ### Phase 1: Project Rename & Scaffolding
 | Step | Description |
 |------|-------------|
-| 1.1 | Rename all `opencode-pets` references in source |
+| 1.1 | Rename all `opencode-status-sync` references in source |
 | 1.2 | Rename config file to `opencode-status-sync.json` |
 | 1.3 | Update `package.json` |
 | 1.4 | Update `README.md` |

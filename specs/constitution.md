@@ -1,8 +1,8 @@
-# Constitution: opencode-pets
+# Constitution: opencode-status-sync
 
 ## Project Identity
 
-**opencode-pets** is an OpenCode plugin that visualizes the AI agent's current activity state by sending status updates to a pet service API. Each state corresponds to a visual representation (sleeping, idle, thinking, reading, writing, running commands, working).
+**opencode-status-sync** is an OpenCode plugin that visualizes the AI agent's current activity state by sending status updates to a pet service API. Each state corresponds to a visual representation (sleeping, idle, thinking, reading, writing, running commands, working).
 
 ## Core Principles
 
@@ -25,7 +25,7 @@ The plugin MUST operate as a side-effect observer. It SHALL NOT:
 
 ### 4. Configurable
 - The baseURL of the pet service SHALL be user-configurable
-- Configuration SHALL be read from `opencode-pets.json`
+- Configuration SHALL be read from `opencode-status-sync.json`
 - Sensible defaults SHALL be provided where applicable
 
 ### 5. Observable

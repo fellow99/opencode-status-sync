@@ -5,7 +5,7 @@
 
 ## Overview
 
-Restructure the opencode-pets plugin into opencode-status-sync with a fully configurable, mapping-driven architecture. Replace hardcoded state-to-endpoint mappings with a JSON configuration file (`opencode-status-sync.json`) that defines which OpenCode events and tool calls map to which API endpoints, HTTP methods, request bodies, and headers. Support all available OpenCode extension points (events, hooks, tools) so users can extend status synchronization beyond the original 6 pet states.
+Restructure the opencode-status-sync plugin into opencode-status-sync with a fully configurable, mapping-driven architecture. Replace hardcoded state-to-endpoint mappings with a JSON configuration file (`opencode-status-sync.json`) that defines which OpenCode events and tool calls map to which API endpoints, HTTP methods, request bodies, and headers. Support all available OpenCode extension points (events, hooks, tools) so users can extend status synchronization beyond the original 6 pet states.
 
 ## Actors
 
@@ -43,9 +43,9 @@ Restructure the opencode-pets plugin into opencode-status-sync with a fully conf
 **Then** verbose console output is emitted showing state transitions and API calls
 
 ### Scenario 6: Project Rename
-**Given** the project was previously named `opencode-pets`
+**Given** the project was previously named `opencode-status-sync`
 **When** the refactoring is complete
-**Then** all references to `opencode-pets` are changed to `opencode-status-sync`, the config file is renamed to `opencode-status-sync.json`, and the plugin identifier is updated
+**Then** all references to `opencode-status-sync` are changed to `opencode-status-sync`, the config file is renamed to `opencode-status-sync.json`, and the plugin identifier is updated
 
 ## Functional Requirements
 
@@ -153,7 +153,7 @@ All other hooks (`shell.env`, custom `tool`, `experimental.session.compacting`) 
 |----|-----------|--------|
 | SC-01 | Plugin loads without errors | 100% of startups |
 | SC-02 | All 6 API endpoints correctly mapped in default config | 6/6 endpoints |
-| SC-03 | Project rename complete (no `opencode-pets` references remain in code/config) | 0 occurrences |
+| SC-03 | Project rename complete (no `opencode-status-sync` references remain in code/config) | 0 occurrences |
 | SC-04 | Config file renamed to `opencode-status-sync.json` | ✓ |
 | SC-05 | Zero TypeScript compilation errors | 0 errors |
 | SC-06 | Missing config results in clean degradation | No API calls, no crashes |

@@ -1,7 +1,7 @@
-# Specification Checklist: opencode-pets
+# Specification Checklist: opencode-status-sync
 
 ## Feature ID
-`001-opencode-pets-plugin`
+`001-opencode-status-sync-plugin`
 
 ## Document Completion Status
 

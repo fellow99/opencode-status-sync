@@ -1,7 +1,7 @@
-# Overall Implementation Plan: opencode-pets
+# Overall Implementation Plan: opencode-status-sync
 
 ## Feature ID
-`001-opencode-pets-plugin`
+`001-opencode-status-sync-plugin`
 
 ## Overview
 
@@ -22,7 +22,7 @@ The plugin uses OpenCode's `event` hook to subscribe to all events, combined wit
 | Step | Description | Output |
 |------|-------------|--------|
 | 1.1 | Create `.opencode/plugins/` directory | Directory structure |
-| 1.2 | Create `opencode-pets.ts` skeleton | Plugin entry file |
+| 1.2 | Create `opencode-status-sync.ts` skeleton | Plugin entry file |
 | 1.3 | Create root `package.json` with dev dependencies | Package manifest |
 | 1.4 | Create `tsconfig.json` for IDE support | TypeScript config |
 | 1.5 | Create root `README.md` | Project documentation |
@@ -31,7 +31,7 @@ The plugin uses OpenCode's `event` hook to subscribe to all events, combined wit
 
 | Step | Description | Output |
 |------|-------------|--------|
-| 2.1 | Implement config reading from `opencode-pets.json` | `readConfig()` function |
+| 2.1 | Implement config reading from `opencode-status-sync.json` | `readConfig()` function |
 | 2.2 | Implement HTTP request helper | `notifyPet()` function with error handling |
 | 2.3 | Implement state deduplication | `currentState` tracking variable |
 | 2.4 | Implement event → state mapping | Mapping logic |
@@ -58,7 +58,7 @@ Phase 1 (Scaffolding) → Phase 2 (Core Logic) → Phase 3 (Integration)
 
 | File | Purpose |
 |------|---------|
-| `.opencode/plugins/opencode-pets.ts` | Main plugin source code |
+| `.opencode/plugins/opencode-status-sync.ts` | Main plugin source code |
 | `package.json` | Project metadata and dev dependencies |
 | `tsconfig.json` | TypeScript configuration for IDE support |
 | `opencode.json` | OpenCode project configuration (example) |
@@ -112,7 +112,7 @@ export const OpenCodePetsPlugin: Plugin = async ({ client, directory }) => {
   const config = await readConfig(directory)
   
   // 2. Initialize logging
-  await client.app.log({ body: { service: "opencode-pets", level: "info", message: `Initialized with baseURL: ${config.baseURL}` } })
+  await client.app.log({ body: { service: "opencode-status-sync", level: "info", message: `Initialized with baseURL: ${config.baseURL}` } })
   
   // 3. Track current state for dedup + debounce
   let currentState = ""

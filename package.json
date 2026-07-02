@@ -1,17 +1,17 @@
 {
-  "name": "opencode-pets",
-  "version": "0.1.0",
-  "description": "OpenCode plugin that sends AI status updates to a pet visualization service",
+  "name": "opencode-status-sync",
+  "version": "0.2.0",
+  "description": "OpenCode plugin that syncs AI status to an external service via configurable HTTP mappings",
   "type": "module",
-  "main": ".opencode/plugins/opencode-pets.ts",
+  "main": ".opencode/plugins/opencode-status-sync.ts",
   "files": [
-    ".opencode/plugins/opencode-pets.ts"
+    ".opencode/plugins/opencode-status-sync.ts"
   ],
   "keywords": [
     "opencode",
     "opencode-plugin",
-    "pet",
-    "status"
+    "status-sync",
+    "config-driven"
   ],
   "license": "MIT",
   "devDependencies": {

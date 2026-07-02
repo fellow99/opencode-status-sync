@@ -1,0 +1,13 @@
+{
+  "debug": true,
+  "baseURL": "http://192.168.137.197",
+  "headers": {},
+  "mapping": [
+    { "status": "idle",     "url": "/idle",     "body": "" },
+    { "status": "error",    "url": "/error",    "body": "" },
+    { "status": "thinking", "url": "/thinking", "body": "" },
+    { "status": "reading",  "url": "/reading",  "body": "" },
+    { "status": "writing",  "url": "/writing",  "body": "" },
+    { "status": "working",  "url": "/working",  "body": "" }
+  ]
+}

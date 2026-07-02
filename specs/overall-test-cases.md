@@ -1,7 +1,7 @@
-# Test Cases: opencode-pets
+# Test Cases: opencode-status-sync
 
 ## Feature ID
-`001-opencode-pets-plugin`
+`001-opencode-status-sync-plugin`
 
 ## Test Environment
 
@@ -17,7 +17,7 @@
 ## Category 1: Configuration Tests
 
 ### TC-CFG-01: Valid Configuration
-- **Description**: Plugin loads successfully with valid `baseURL in opencode-pets.json` in `opencode.json`
+- **Description**: Plugin loads successfully with valid `baseURL in opencode-status-sync.json` in `opencode.json`
 - **Precondition**: `opencode.json` contains `{ "pets": { "baseURL": "http://192.168.137.197" } }`
 - **Steps**:
   1. Place plugin in `.opencode/plugins/`
@@ -236,7 +236,7 @@
 - **Steps**:
   1. Start OpenCode
   2. Check logs for plugin initialization message
-- **Expected Result**: Log contains "opencode-pets" service log entry at info level
+- **Expected Result**: Log contains "opencode-status-sync" service log entry at info level
 - **Priority**: P0
 
 ### TC-LIFE-02: Plugin Unloads Cleanly

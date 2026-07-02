@@ -1,14 +1,14 @@
-# Data Model: opencode-pets
+# Data Model: opencode-status-sync
 
 ## Overview
 
-The opencode-pets plugin has a minimal data model. It does not persist any data — all state is in-memory and ephemeral.
+The opencode-status-sync plugin has a minimal data model. It does not persist any data — all state is in-memory and ephemeral.
 
 ## Configuration Model
 
 ### PetsConfig
 
-The plugin's configuration, read from `opencode-pets.json`.
+The plugin's configuration, read from `opencode-status-sync.json`.
 
 ```typescript
 interface PetsConfig {
@@ -22,7 +22,7 @@ interface PetsConfig {
 - `baseURL` SHOULD be a valid URL (protocol + host)
 - If `baseURL` is missing or empty, the plugin operates in disabled mode
 
-**Source**: `opencode-pets.json`
+**Source**: `opencode-status-sync.json`
 
 ### Config Example
 
@@ -170,7 +170,7 @@ Structured log entry via `client.app.log()`.
 
 ```typescript
 interface LogEntry {
-  service: "opencode-pets"
+  service: "opencode-status-sync"
   level: "debug" | "info" | "warn" | "error"
   message: string
   extra?: Record<string, unknown>

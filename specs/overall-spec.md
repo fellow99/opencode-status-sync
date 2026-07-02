@@ -1,20 +1,20 @@
-# Overall Specification: opencode-pets
+# Overall Specification: opencode-status-sync
 
 ## Feature ID
-`001-opencode-pets-plugin`
+`001-opencode-status-sync-plugin`
 
 ## Feature Name
 OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 
 ## Overview
 
-**opencode-pets** is an OpenCode plugin that monitors the AI agent's activity in real-time and sends status updates to a pet visualization service. Each state change triggers an HTTP request to a corresponding API endpoint, allowing a visual pet to reflect what OpenCode is currently doing — thinking, reading files, writing code, working (running commands or other tools), idling, or error state.
+**opencode-status-sync** is an OpenCode plugin that monitors the AI agent's activity in real-time and sends status updates to a pet visualization service. Each state change triggers an HTTP request to a corresponding API endpoint, allowing a visual pet to reflect what OpenCode is currently doing — thinking, reading files, writing code, working (running commands or other tools), idling, or error state.
 
 ## Actors
 
 | Actor | Role |
 |-------|------|
-| **OpenCode User** | Configures the plugin by creating `opencode-pets.json` with a `baseURL`. Observes the pet's visual state. |
+| **OpenCode User** | Configures the plugin by creating `opencode-status-sync.json` with a `baseURL`. Observes the pet's visual state. |
 | **OpenCode AI Agent** | Performs actions (thinking, reading, writing, executing) that trigger plugin hooks. |
 | **Pet Service** | External HTTP service that receives status calls and renders the pet visualization. Runs at the configured `baseURL`. |
 
@@ -23,7 +23,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 ### Scenario 1: Plugin Installation and Configuration
 
 **Given** the user has OpenCode installed
-**When** they add the plugin file to `.opencode/plugins/` and create `opencode-pets.json` with `baseURL`
+**When** they add the plugin file to `.opencode/plugins/` and create `opencode-status-sync.json` with `baseURL`
 **Then** the plugin loads at OpenCode startup and logs the configured baseURL
 
 ### Scenario 2: AI Thinking State
@@ -70,7 +70,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 
 ### Scenario 9: Missing Configuration
 
-**Given** the plugin is loaded but `opencode-pets.json` does not exist or `baseURL` is not configured
+**Given** the plugin is loaded but `opencode-status-sync.json` does not exist or `baseURL` is not configured
 **When** any event would trigger a status update
 **Then** the plugin logs a warning and does NOT attempt API calls
 
@@ -85,7 +85,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-01 | Plugin SHALL load from `.opencode/plugins/` directory at OpenCode startup | P0 |
-| FR-02 | Plugin SHALL read `baseURL` configuration from `opencode-pets.json` | P0 |
+| FR-02 | Plugin SHALL read `baseURL` configuration from `opencode-status-sync.json` | P0 |
 | FR-03 | Plugin SHALL log initialization status via `client.app.log()` | P1 |
 | FR-04 | Plugin SHALL subscribe to OpenCode session events (`session.created`, `session.idle`, `session.error`) | P0 |
 | FR-05 | Plugin SHALL subscribe to OpenCode tool execution events (`tool.execute.before`) | P0 |
@@ -98,7 +98,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 | FR-12 | Plugin SHALL deduplicate consecutive identical state changes (no repeat calls) | P1 |
 | FR-13 | Plugin SHALL debounce rapid state transitions (1000ms delay, except idle/error which fire immediately) | P1 |
 | FR-14 | Plugin SHALL handle API call failures gracefully (log, never throw) | P0 |
-| FR-15 | Plugin SHALL function when `baseURL` is missing from `opencode-pets.json` (log warning, disable calls) | P1 |
+| FR-15 | Plugin SHALL function when `baseURL` is missing from `opencode-status-sync.json` (log warning, disable calls) | P1 |
 | FR-16 | Plugin SHALL NOT block or delay any OpenCode operation | P0 |
 | FR-17 | Plugin SHALL use native `fetch` (Bun built-in) for HTTP requests | P1 |
 
@@ -112,7 +112,7 @@ OpenCode 状态宠物插件 (OpenCode Status Pet Plugin)
 | NFR-04 | Plugin SHALL log all state transitions at debug level | P2 |
 | NFR-05 | Plugin SHALL log errors at error level with request context | P2 |
 | NFR-06 | HTTP requests SHALL use a reasonable timeout (default: 5 seconds) | P2 |
-| NFR-07 | Plugin code SHALL be a single file (`opencode-pets.ts`) under 300 lines | P2 |
+| NFR-07 | Plugin code SHALL be a single file (`opencode-status-sync.ts`) under 300 lines | P2 |
 
 ## Event-to-API Mapping
 

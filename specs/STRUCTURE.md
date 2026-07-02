@@ -1,13 +1,13 @@
-# Project Structure: opencode-pets
+# Project Structure: opencode-status-sync
 
 ## Directory Tree
 
 ```
-opencode-pets/
+opencode-status-sync/
 │
 ├── .opencode/                         # OpenCode project config
 │   └── plugins/                       # Local plugin directory
-│       └── opencode-pets.ts           # [PLANNED] Main plugin source
+│       └── opencode-status-sync.ts           # [PLANNED] Main plugin source
 │
 ├── specs/                             # Specification documents
 │   ├── README.md                      # ✅ Docs index & reading guide
@@ -41,14 +41,14 @@ opencode-pets/
 ### Plugin Source (to be created)
 | File | Purpose |
 |------|---------|
-| `.opencode/plugins/opencode-pets.ts` | Plugin entry — event hooks, state management, HTTP notifier |
+| `.opencode/plugins/opencode-status-sync.ts` | Plugin entry — event hooks, state management, HTTP notifier |
 
 ### Project Config (to be created)
 | File | Purpose |
 |------|---------|
 | `package.json` | Project metadata, dev dependencies (`@opencode-ai/plugin`, `typescript`) |
 | `tsconfig.json` | TypeScript configuration for IDE support |
-| `opencode.json` | Example OpenCode config with `baseURL in opencode-pets.json` |
+| `opencode.json` | Example OpenCode config with `baseURL in opencode-status-sync.json` |
 | `.gitignore` | Ignore patterns (node_modules, logs, etc.) |
 | `README.md` | Project introduction and usage guide |
 

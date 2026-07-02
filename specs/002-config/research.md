@@ -35,7 +35,7 @@
 
 **Decision**: Read `opencode-status-sync.json` from the project directory (`directory` from plugin context).
 
-**Rationale**: This is where OpenCode looks for project-level config. Same location as the old `opencode-pets.json`.
+**Rationale**: This is where OpenCode looks for project-level config. Same location as the old `opencode-status-sync.json`.
 
 ## Decision: Headers Support
 

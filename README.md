@@ -1,40 +1,50 @@
-# opencode-pets
+# opencode-status-sync
 
-OpenCode 插件 — 将 AI 助手的工作状态实时推送给宠物可视化服务。
+OpenCode 插件 — 将 AI 助手的工作状态实时同步到外部可视化服务。
 
-AI 在思考 🤔、读文件 📖、写代码 ✍️、执行命令 ⚙️、空闲发呆 💤 还是出错了 💥——你的桌面宠物都会同步表现出来。
+AI 在思考 🤔、读文件 📖、写代码 ✍️、执行命令 ⚙️、空闲发呆 💤 还是出错了 💥——你的外部服务都会同步收到通知。
 
 ---
 
 ## 工作原理
 
-插件监听 OpenCode 的事件系统（`session.*` 和 `tool.execute.*`），将 AI 活动映射为宠物状态，通过 HTTP GET 请求通知宠物服务：
+插件监听 OpenCode 的事件系统（`session.*` 和 `tool.execute.*`），将 AI 活动映射为逻辑状态，通过 HTTP GET 请求通知外部服务。所有映射关系可配置。
 
-| 触发条件 | 宠物状态 | API 端点 | 含义 |
-|---------|---------|----------|------|
-| 用户发送消息 / 工具执行完毕 | `thinking` | `GET /thinking` | 思考中 |
-| 会话进入空闲 | `idle` | `GET /idle` | 发呆中 |
-| 会话发生错误 | `error` | `GET /error` | 出错 |
-| 调用 `read` / `glob` / `grep` 工具 | `reading` | `GET /reading` | 阅读中 |
-| 调用 `edit` / `write` 工具 | `writing` | `GET /writing` | 书写中 |
-| 调用 `bash` 或其他工具 | `working` | `GET /working` | 工作中 |
+### 配置驱动映射
+
+所有状态到 API 端点的映射都定义在 `opencode-status-sync.json` 中，无硬编码：
+
+```json
+{
+  "debug": true,
+  "baseURL": "http://192.168.137.197",
+  "headers": {},
+  "mapping": [
+    { "status": "idle",     "url": "/idle",     "body": "" },
+    { "status": "error",    "url": "/error",    "body": "" },
+    { "status": "thinking", "url": "/thinking", "body": "" },
+    { "status": "reading",  "url": "/reading",  "body": "" },
+    { "status": "writing",  "url": "/writing",  "body": "" },
+    { "status": "working",  "url": "/working",  "body": "" }
+  ]
+}
+```
+
+### 状态检测
+
+| OpenCode 行为 | 如何检测 | 默认映射到 |
+|---------------|---------|-----------|
+| 会话创建 / 用户发送消息 | `event` hook → `session.created` | `thinking` |
+| 会话进入空闲 | `event` hook → `session.idle` | `idle` |
+| 会话发生错误 | `event` hook → `session.error` | `error` |
+| 工具: read, glob, grep | `tool.execute.before` | `reading` |
+| 工具: edit, write | `tool.execute.before` | `writing` |
+| 工具: bash 及其他 | `tool.execute.before` | `working` |
+| 工具执行完毕（无错误） | `tool.execute.after` | `thinking` |
 
 ### 防抖机制
 
-AI 经常在短时间内连续调用多个工具（读文件→搜索→写代码→执行命令），为避免宠物在状态间反复跳跃产生视觉抖动，插件对非终结状态（`thinking`、`reading`、`writing`、`working`）启用了 **1000ms 防抖**——快速连串的状态变更只发送最后一次。
-
-`idle`（发呆）和 `error`（出错）是终结状态，**不防抖**，一旦触发立刻发送，同时取消所有待处理的防抖定时器。
-
-```
-reading → writing → thinking（200ms 内连续发生）
-                        ↓
-              1000ms 后发送 "thinking"
-
-但如果是：
-reading → idle（200ms 内）
-           ↓
-     立刻发送 "idle"，取消防抖
-```
+AI 经常在短时间内连续调用多个工具，为避免状态反复跳跃，插件对非终结状态启用了 **1000ms 防抖**。`idle` 和 `error` 是终结状态，**不防抖**，一旦触发立刻发送。
 
 ---
 
@@ -42,19 +52,28 @@ reading → idle（200ms 内）
 
 ### 1. 放置插件文件
 
-将 `.opencode/plugins/opencode-pets.ts` 复制到以下任一位置：
+将 `.opencode/plugins/opencode-status-sync.ts` 复制到以下任一位置：
 
-- **项目级**：`<你的项目>/.opencode/plugins/opencode-pets.ts`
-- **全局级**：`~/.config/opencode/plugins/opencode-pets.ts`
+- **项目级**：`<你的项目>/.opencode/plugins/opencode-status-sync.ts`
+- **全局级**：`~/.config/opencode/plugins/opencode-status-sync.ts`
 
 ### 2. 创建配置文件
 
-在项目根目录（或全局配置目录）创建 `opencode-pets.json`：
+在项目根目录创建 `opencode-status-sync.json`：
 
 ```json
 {
+  "debug": true,
   "baseURL": "http://192.168.137.197",
-  "debug": true
+  "headers": {},
+  "mapping": [
+    { "status": "idle",     "url": "/idle",     "body": "" },
+    { "status": "error",    "url": "/error",    "body": "" },
+    { "status": "thinking", "url": "/thinking", "body": "" },
+    { "status": "reading",  "url": "/reading",  "body": "" },
+    { "status": "writing",  "url": "/writing",  "body": "" },
+    { "status": "working",  "url": "/working",  "body": "" }
+  ]
 }
 ```
 
@@ -68,14 +87,19 @@ reading → idle（200ms 内）
 
 | 字段 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| `baseURL` | 是 | — | 宠物服务的根地址（如 `http://192.168.137.197`） |
-| `debug` | 否 | `false` | 启用调试日志（`console.info`） |
+| `debug` | 否 | `false` | 启用调试日志 |
+| `baseURL` | 是 | — | 外部服务根地址 |
+| `headers` | 否 | `{}` | 所有请求携带的 HTTP 头 |
+| `mapping` | 是 | — | 状态到端点的映射数组 |
+| `mapping[].status` | 是 | — | 逻辑状态名称 |
+| `mapping[].url` | 是 | — | 相对 URL 路径 |
+| `mapping[].body` | 否 | `""` | 请求体内容 |
 
-如果 `opencode-pets.json` 不存在或 `baseURL` 无效，插件会打印警告并进入禁用模式——不影响 OpenCode 的正常运行。
+如果 `opencode-status-sync.json` 不存在或配置无效，插件会打印警告并进入禁用模式——不影响 OpenCode 的正常运行。
 
 ---
 
-## 宠物服务 API
+## 外部服务 API
 
 插件期望在 `baseURL` 上运行一个 HTTP 服务，提供以下端点：
 
@@ -88,31 +112,21 @@ reading → idle（200ms 内）
 | `/writing` | GET | 书写中 — AI 正在编辑/写入文件 |
 | `/working` | GET | 工作中 — AI 正在执行命令或使用其他工具 |
 
-所有端点均为 GET 请求，无需认证，无需请求体。
+所有端点均为 GET 请求。
 
 ---
 
 ## 项目结构
 
 ```
-opencode-pets/
+opencode-status-sync/
 ├── .opencode/plugins/
-│   └── opencode-pets.ts      # 插件源码（单文件，~250 行）
-├── specs/                     # 规范文档目录
-│   ├── README.md              # 文档索引入口
-│   ├── constitution.md        # 项目原则与质量门禁
-│   ├── overall-spec.md        # 功能规范（场景/需求/映射）
-│   ├── overall-plan.md        # 实现计划与状态机
-│   ├── overall-data-model.md  # 数据模型与类型定义
-│   ├── overall-test-cases.md  # 测试用例（23 条）
-│   ├── ARCHITECTURE.md        # 系统架构与组件设计
-│   ├── TECH.md                # 技术选型说明
-│   └── STRUCTURE.md           # 目录结构说明
-├── logs/                      # 开发与测试日志
-├── opencode-pets.json         # 插件配置文件
-├── package.json               # 项目元数据
-├── tsconfig.json              # TypeScript 配置
-└── README.md                  # 本文件
+│   └── opencode-status-sync.ts  # 插件源码
+├── specs/                        # 规范文档目录
+├── opencode-status-sync.json     # 插件配置文件
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
 
 ---
@@ -120,14 +134,14 @@ opencode-pets/
 ## 开发
 
 ```bash
-# 安装开发依赖（类型检查用）
+# 安装开发依赖
 bun install
 
 # 类型检查
 bun x tsc --noEmit
 ```
 
-插件运行时**零外部依赖**——仅使用 Bun 内置 `fetch` 和 OpenCode 插件上下文提供的 `client`、`$` 等 API。
+插件运行时**零外部依赖**——仅使用 Bun 内置 `fetch` 和 OpenCode 插件上下文 API。
 
 ---
 

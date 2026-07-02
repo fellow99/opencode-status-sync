@@ -1,4 +1,4 @@
-# Architecture: opencode-pets
+# Architecture: opencode-status-sync
 
 ## System Context
 
@@ -7,7 +7,7 @@
 │                   OpenCode Runtime                    │
 │                                                       │
 │  ┌─────────────────────────────────────────────┐    │
-│  │          opencode-pets Plugin                 │    │
+│  │          opencode-status-sync Plugin                 │    │
 │  │                                               │    │
 │  │  ┌──────────┐  ┌──────────┐  ┌───────────┐  │    │
 │  │  │  Config   │  │  State   │  │   HTTP     │  │    │
@@ -121,9 +121,9 @@ tool: bash/other     → "working"
 ### As Local Plugin
 
 ```
-~/.config/opencode/plugins/opencode-pets.ts  (global)
+~/.config/opencode/plugins/opencode-status-sync.ts  (global)
 # OR
-<project>/.opencode/plugins/opencode-pets.ts  (per-project)
+<project>/.opencode/plugins/opencode-status-sync.ts  (per-project)
 ```
 
 ### Configuration
@@ -140,10 +140,10 @@ tool: bash/other     → "working"
 ## File Structure
 
 ```
-opencode-pets/
+opencode-status-sync/
 ├── .opencode/
 │   └── plugins/
-│       └── opencode-pets.ts       # Plugin source (single file)
+│       └── opencode-status-sync.ts       # Plugin source (single file)
 ├── specs/                         # Specification documents
 │   ├── README.md
 │   ├── SPECS_CHECKLIST.md

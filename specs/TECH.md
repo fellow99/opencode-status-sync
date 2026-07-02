@@ -1,4 +1,4 @@
-# Technology Selection: opencode-pets
+# Technology Selection: opencode-status-sync
 
 ## Runtime Environment
 
@@ -27,7 +27,7 @@
 
 | Aspect | Choice | Rationale |
 |--------|--------|-----------|
-|  `opencode-pets.json` | `opencode-pets.json` | Native OpenCode config file. No separate config file needed. |
+|  `opencode-status-sync.json` | `opencode-status-sync.json` | Native OpenCode config file. No separate config file needed. |
 | Config Format | JSON | Standard for OpenCode ecosystem. |
 | Required Fields | `baseURL` | URL of the pet service API. |
 | Default | `http://localhost:3000` | Sensible local default. |
@@ -35,10 +35,10 @@
 ## Project Structure
 
 ```
-opencode-pets/
+opencode-status-sync/
 ├── .opencode/
 │   └── plugins/
-│       └── opencode-pets.ts       # Plugin entry point
+│       └── opencode-status-sync.ts       # Plugin entry point
 ├── specs/                         # Specification documents
 ├── logs/                          # Development and test logs
 ├── package.json                   # Root package (npm publishing)
