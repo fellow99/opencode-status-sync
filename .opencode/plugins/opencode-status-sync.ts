@@ -59,10 +59,10 @@ const WILDCARD_STATUS = "*"
  * Returns null if no valid config is found — plugin operates in disabled mode.
  */
 async function readConfig(
-  directory: string,
   log: (level: LogLevel, message: string, extra?: Record<string, unknown>) => Promise<void>,
 ): Promise<StatusSyncConfig | null> {
-  const configPath = `${directory}/opencode-status-sync.json`
+  const home = process.env.HOME ?? ""
+  const configPath = `${home}/.config/opencode/opencode-status-sync.json`
   try {
     const file = Bun.file(configPath)
     if (!(await file.exists())) {
@@ -164,8 +164,9 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
   }
 
   // ── Read configuration ──────────────────────────────────────────────
-  const configPath = `${directory}/opencode-status-sync.json`
-  const config = await readConfig(directory, log)
+  const home = process.env.HOME ?? ""
+  const configPath = `${home}/.config/opencode/opencode-status-sync.json`
+  const config = await readConfig(log)
   debugEnabled = config?.debug ?? false
 
   dlog("[📡 status-sync] ──────────────────────────────────")
@@ -174,7 +175,7 @@ export const OpenCodeStatusSync: Plugin = async ({ client, directory }) => {
   dlog(`[📡 status-sync] 📋 Reading config: ${configPath}`)
 
   if (!config) {
-    console.warn(`[📡 status-sync] ⚠️  opencode-status-sync.json not found or invalid`)
+    console.warn(`[📡 status-sync] ⚠️  ${configPath} not found or invalid`)
     console.warn(`[📡 status-sync] ⚠️  Plugin disabled — configure ${configPath} with baseURL and mapping`)
     console.warn("[📡 status-sync] ──────────────────────────────────")
     await log("warn", "No valid config in opencode-status-sync.json. Plugin disabled.")

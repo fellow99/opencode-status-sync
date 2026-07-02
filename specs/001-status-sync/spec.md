@@ -46,7 +46,7 @@ The Status Sync plugin monitors OpenCode AI agent activity in real-time and send
 
 ### 3.1 Configuration
 
-- FR-001-001: Plugin MUST read configuration from `opencode-status-sync.json` in the project directory
+- FR-001-001: Plugin MUST read configuration from `~/.config/opencode/opencode-status-sync.json` (global OpenCode config directory)
 - FR-001-002: Configuration MUST support `debug` (boolean), `baseURL` (string), `headers` (object), and `mapping` (array) fields
 - FR-001-003: Each mapping entry MUST contain `status` (OpenCode extension point name) and `url` (API endpoint path)
 - FR-001-004: Each mapping entry MAY contain `method` (HTTP method, defaults to "GET") and `body` (request body, defaults to "")
