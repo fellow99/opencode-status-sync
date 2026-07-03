@@ -63,7 +63,7 @@ async function readConfig(
   log: (level: LogLevel, message: string, extra?: Record<string, unknown>) => Promise<void>,
   directory: string,
 ): Promise<StatusSyncConfig | null> {
-  const home = process.env.HOME ?? ""
+  const home = process.env.HOME || process.env.USERPROFILE || ""
   const paths = [
     `${directory}/opencode-status-sync.json`,
     `${home}/.config/opencode/opencode-status-sync.json`,
