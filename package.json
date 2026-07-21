@@ -1,20 +1,25 @@
 {
   "name": "opencode-status-sync",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenCode plugin that syncs AI status to an external service via configurable HTTP mappings",
   "type": "module",
-  "main": ".opencode/plugins/opencode-status-sync.ts",
-  "types": ".opencode/plugins/opencode-status-sync.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./.opencode/plugins/opencode-status-sync.ts",
-      "import": "./.opencode/plugins/opencode-status-sync.ts",
-      "default": "./.opencode/plugins/opencode-status-sync.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
-    "typecheck": "bun x tsc --noEmit",
-    "prepublishOnly": "bun run typecheck"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "prepublishOnly": "bun run typecheck && bun run build"
   },
   "repository": {
     "type": "git",

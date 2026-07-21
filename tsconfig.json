@@ -21,6 +21,6 @@
     "lib": ["ESNext"],
     "types": ["bun"]
   },
-  "include": [".opencode/**/*.ts"],
+  "include": ["index.ts", "src/**/*.ts"],
   "exclude": ["node_modules", "dist", "logs"]
 }
