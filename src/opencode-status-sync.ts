@@ -1,4 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
+import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,10 +73,10 @@ async function readConfig(
 
   for (const configPath of paths) {
     try {
-      const file = Bun.file(configPath)
-      if (!(await file.exists())) continue
+      if (!existsSync(configPath)) continue
 
-      const content = await file.json()
+      const raw = await readFile(configPath, "utf-8")
+      const content = JSON.parse(raw) as Record<string, unknown>
 
       // Validate baseURL
       const baseURL: unknown = content?.baseURL
