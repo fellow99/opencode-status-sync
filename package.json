@@ -1,6 +1,6 @@
 {
   "name": "@fellow99/opencode-status-sync",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "OpenCode plugin that syncs AI status to an external service via configurable HTTP mappings",
   "private": false,
   "repository": {
@@ -39,6 +39,10 @@
     "./tui": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./plugin": {
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
