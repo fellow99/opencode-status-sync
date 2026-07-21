@@ -1,7 +1,28 @@
 {
-  "name": "opencode-status-sync",
+  "name": "@fellow99/opencode-status-sync",
   "version": "0.3.0",
   "description": "OpenCode plugin that syncs AI status to an external service via configurable HTTP mappings",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fellow99/opencode-status-sync.git"
+  },
+  "author": "fellow99",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fellow99/opencode-status-sync/issues"
+  },
+  "homepage": "https://github.com/fellow99/opencode-status-sync#readme",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "status-sync",
+    "config-driven"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,27 +42,8 @@
     "build": "tsc",
     "prepublishOnly": "bun run typecheck && bun run build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fellow99/opencode-status-sync.git"
-  },
-  "author": "fellow99",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/fellow99/opencode-status-sync/issues"
-  },
-  "homepage": "https://github.com/fellow99/opencode-status-sync#readme",
-  "keywords": [
-    "opencode",
-    "opencode-plugin",
-    "status-sync",
-    "config-driven"
-  ],
   "engines": {
     "bun": ">=1.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.17.12",
